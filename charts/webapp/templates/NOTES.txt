@@ -1,0 +1,21 @@
+###############################################################################
+#  Deploy realizado com sucesso!
+#  Chart: {{ include "webapp.chart" . }}
+#  Release: {{ .Release.Name }}
+#  Namespace: {{ .Release.Namespace }}
+###############################################################################
+
+Para verificar o status dos pods:
+
+  kubectl get pods -l "{{ include "webapp.selectorLabels" . | replace ": " "=" | replace "\n" "," }}"
+
+Para acessar a aplicacao via port-forward:
+
+  kubectl port-forward svc/{{ include "webapp.fullname" . }} 8080:{{ .Values.service.port }}
+  curl http://localhost:8080
+
+Mensagem customizada atual: {{ .Values.customMessage }}
+
+Para atualizar a mensagem:
+
+  helm upgrade {{ .Release.Name }} ./charts/webapp --set customMessage="Nova mensagem"

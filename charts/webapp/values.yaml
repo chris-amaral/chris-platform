@@ -1,0 +1,90 @@
+###############################################################################
+# webapp - Default Values
+# Chart generico para deploy de aplicacoes web.
+# Author: Christopher Amaral
+###############################################################################
+
+# --- Replicas ---------------------------------------------------------------
+replicaCount: 1
+
+# --- Container Image --------------------------------------------------------
+# Suporta qualquer imagem. Exemplos:
+#   nginx:1.27-alpine, httpd:2.4, node:20-slim, python:3.12-slim
+image:
+  repository: nginx
+  tag: "1.27-alpine"
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+
+# --- Naming Override --------------------------------------------------------
+nameOverride: ""
+fullnameOverride: ""
+
+# --- Service ----------------------------------------------------------------
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 80
+
+# --- Resources (CPU/Memory) ------------------------------------------------
+# Sempre defina limits e requests para evitar resource starvation no cluster.
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 250m
+    memory: 256Mi
+
+# --- Custom HTML Message ----------------------------------------------------
+# Mensagem exibida no index.html do Nginx.
+# Pode ser sobrescrita via --set customMessage="..."
+customMessage: "Hello World da AsapTech"
+
+# --- ConfigMap (index.html) -------------------------------------------------
+# Desabilite se usar imagem que ja possui seu proprio conteúdo web.
+configMap:
+  enabled: true
+
+# --- Health Probes ----------------------------------------------------------
+probes:
+  liveness:
+    enabled: true
+    path: /
+    initialDelaySeconds: 10
+    periodSeconds: 15
+    timeoutSeconds: 3
+    failureThreshold: 3
+  readiness:
+    enabled: true
+    path: /
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 3
+
+# --- Autoscaling (HPA) -----------------------------------------------------
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 85
+
+# --- Network Policy ---------------------------------------------------------
+# Quando habilitado, permite apenas ingress na porta do service.
+networkPolicy:
+  enabled: false
+
+# --- Pod Configuration ------------------------------------------------------
+nodeSelector: {}
+tolerations: []
+affinity: {}
+podAnnotations: {}
+podLabels: {}
+
+securityContext:
+  runAsNonRoot: false
+
+containerSecurityContext: {}

@@ -1,0 +1,11 @@
+aws_region         = "us-east-1"
+project_name       = "projeto-christopher"
+environment        = "homol"
+squad              = "projeto-christopher"
+vpc_cidr           = "10.20.0.0/16"
+public_subnet_cidr = "10.20.1.0/24"
+instance_type      = "t3.medium"
+key_name           = ""
+allowed_ssh_cidrs      = []
+enable_nodeport_access = false
+github_repository      = "chris-amaral/DevOps-CICD"
