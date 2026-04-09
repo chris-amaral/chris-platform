@@ -1,6 +1,6 @@
 # Playbook: Scaling e Performance
 
-> Ultima atualizacao: 2025-04 | Autor: Christopher Amaral
+> Ultima atualizacao: 2026-04 | Autor: Christopher Amaral
 
 ---
 
@@ -33,7 +33,7 @@ helm upgrade webapp ./charts/webapp \
   --set replicaCount=3
 
 # Ou via kubectl direto (temporario, Helm sobrescreve no proximo upgrade)
-kubectl scale deployment webapp-webapp --replicas=3
+kubectl scale deployment webapp --replicas=3
 ```
 
 ### Automatico (HPA)
@@ -52,7 +52,7 @@ Verificar HPA:
 ```bash
 kubectl get hpa
 # NAME            REFERENCE             TARGETS   MINPODS   MAXPODS   REPLICAS
-# webapp-webapp   Deployment/webapp..   45%/70%   2         8         3
+# webapp   Deployment/webapp..   45%/70%   2         8         3
 ```
 
 > **Ponto importante**: O HPA precisa do metrics-server instalado no cluster para funcionar. Kind não inclui por padrao. Para instalar: `kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml`. Em projetos que participei, usavamos KEDA para autoscaling baseado em metricas custom (fila SQS, latencia do endpoint, etc).
@@ -104,11 +104,11 @@ terraform apply -var-file=inventories/dev/terraform.tfvars
 
 | Instance | vCPU | RAM | Pods estimados |
 |----------|------|-----|----------------|
-| t3.medium | 2 | 4GB | ~8-10 pods (leves) |
+| m7i-flex.large | 2 | 8GB | ~15-20 pods (leves) |
 | t3.large | 2 | 8GB | ~15-20 pods |
 | t3.xlarge | 4 | 16GB | ~30-40 pods |
 
-> **Ponto importante**: Para Kind em dev, `t3.medium` atende bem ate ~10 pods. Se precisar de mais, considere `t3.large`. Para produção real, a conversa muda completamente — usaria EKS com node groups auto-scaling. Mas para o escopo desse teste, uma EC2 com Kind e suficiente.
+> **Ponto importante**: Para Kind em dev, `m7i-flex.large` (8GB RAM) atende bem ate ~20 pods leves. Para produção real, a conversa muda completamente — usaria EKS com node groups auto-scaling. Mas para o escopo desse teste, uma EC2 com Kind e suficiente.
 
 ---
 

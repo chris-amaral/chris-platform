@@ -1,6 +1,6 @@
 # Security Baseline
 
-> Ultima atualizacao: 2025-04 | Autor: Christopher Amaral
+> Ultima atualizacao: 2026-04 | Autor: Christopher Amaral
 
 ---
 
@@ -59,7 +59,7 @@ Documento de referencia com todos os controles de seguranca implementados no pro
 | 2 | GitHub Secrets | OK | SSH key e ARNs encriptados | GitHub Settings |
 | 3 | Lint obrigatorio | OK | `helm lint --strict` | `ci-deploy-k8s.yml` |
 | 4 | Deploy apenas na main | OK | Condicional no job | `ci-deploy-k8s.yml` |
-| 5 | Atomic deploy | OK | `--atomic` com rollback automatico | `ci-deploy-k8s.yml` |
+| 5 | Deploy protegido | OK | `--force --wait` com timeout de 120s | `ci-deploy-k8s.yml` |
 | 6 | Concurrency control | OK | 1 deploy por vez | `ci-deploy-k8s.yml` |
 | 7 | Path filter | OK | So roda quando charts muda | `ci-deploy-k8s.yml` |
 | 8 | Smoke test | OK | curl pos-deploy | `ci-deploy-k8s.yml` |

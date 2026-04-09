@@ -1,6 +1,6 @@
 # Playbook: Rollback
 
-> Ultima atualizacao: 2025-04 | Autor: Christopher Amaral
+> Ultima atualizacao: 2026-04 | Autor: Christopher Amaral
 
 ---
 
@@ -46,7 +46,7 @@ helm history webapp
 kubectl get pods -l app.kubernetes.io/name=webapp
 # Pod novo deve estar Running
 
-kubectl port-forward svc/webapp-webapp 8080:80 &
+kubectl port-forward svc/webapp 8080:80 &
 curl -s http://localhost:8080
 # conteúdo deve ser da revisao antiga
 ```
@@ -154,7 +154,7 @@ helm rollback webapp 0
 
 | Pratica | Implementada? |
 |---------|---------------|
-| `--atomic` no helm upgrade | Sim |
+| `--force --wait` no helm upgrade | Sim |
 | `terraform plan` antes de apply | Sim |
 | Versionamento do S3 state | Sim |
 | DynamoDB lock | Sim |

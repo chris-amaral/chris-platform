@@ -1,6 +1,6 @@
 # Links e Referencias
 
-> Ultima atualizacao: 2025-04 | Autor: Christopher Amaral
+> Ultima atualizacao: 2026-04 | Autor: Christopher Amaral
 
 ---
 

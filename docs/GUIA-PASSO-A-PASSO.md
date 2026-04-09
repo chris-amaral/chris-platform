@@ -31,17 +31,17 @@ helm install webapp ./charts/webapp \
 
 # Verificacao
 kubectl get pods -l app.kubernetes.io/name=webapp    # 1/1 Running
-kubectl get svc webapp-webapp                        # ClusterIP 80/TCP
+kubectl get svc webapp                        # ClusterIP 80/TCP
 helm list                                            # STATUS: deployed
 
 # Upgrade (simula CI/CD)
 helm upgrade webapp ./charts/webapp \
   --set customMessage="Hello World da AsapTech - Deploy via CI/CD (Commit: abc1234)" \
-  --atomic
+  --force --wait
 helm history webapp                                  # 2 revisoes
 
 # Teste HTTP
-kubectl port-forward svc/webapp-webapp 8080:80 &
+kubectl port-forward svc/webapp 8080:80 &
 curl -s http://localhost:8080                         # HTML com mensagem customizada
 ```
 
@@ -137,11 +137,11 @@ kind get clusters                                     # dev-cluster
 # Deploy manual
 helm upgrade --install webapp /tmp/webapp-chart \
   --set customMessage="Hello World da AsapTech - Deploy manual" \
-  --atomic
+  --force --wait --timeout 120s
 
 # Verificacao
 kubectl get pods -l app.kubernetes.io/name=webapp     # 1/1 Running
-kubectl port-forward svc/webapp-webapp 8080:80 &
+kubectl port-forward svc/webapp 8080:80 &
 curl -s http://localhost:8080                          # HTML com mensagem
 ```
 
@@ -170,7 +170,7 @@ git push origin main
 ### 5.3. Resultado
 
 - **Job Lint**: helm lint --strict + helm template (default + prod values)
-- **Job Deploy**: OIDC auth + SSH + helm upgrade --install --atomic + smoke test
+- **Job Deploy**: OIDC auth + SSH + helm upgrade --install --force --wait + smoke test
 
 ---
 

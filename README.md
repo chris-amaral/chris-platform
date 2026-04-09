@@ -10,10 +10,10 @@ Terraform modular provisiona EC2 com Kind cluster, Helm chart generico deploya a
 
 | Ferramenta | Funcao |
 |------------|--------|
-| **Terraform** | Provisionamento AWS com modulos reusaveis e inventories por ambiente |
+| **Terraform** | Provisionamento AWS com modulos reusaveis, inventories por ambiente, Elastic IP |
 | **Helm** | Chart generico `webapp` para deploy de qualquer aplicacao web |
 | **Kind** | Cluster Kubernetes local (Docker-based) na EC2 |
-| **GitHub Actions** | Pipeline CI/CD com autenticacao OIDC |
+| **GitHub Actions** | Pipeline CI/CD com autenticacao OIDC e suporte GitFlow |
 
 ---
 
@@ -91,7 +91,7 @@ GitHub Actions                       AWS STS
      |      (expiram em ~1h)            |
 ```
 
-Apos autenticar na AWS, o pipeline conecta na EC2 via SSH, copia o chart com `scp` e executa `helm upgrade --install --atomic`.
+Apos autenticar na AWS, o pipeline conecta na EC2 via SSH, copia o chart com `scp` e executa `helm upgrade --install --force --wait`.
 
 | Secret | Descricao |
 |--------|-----------|
@@ -109,11 +109,11 @@ Apos autenticar na AWS, o pipeline conecta na EC2 via SSH, copia o chart com `sc
 ```bash
 # Na EC2
 kubectl get pods -l app.kubernetes.io/name=webapp    # 1/1 Running
-kubectl get svc | grep webapp                        # ClusterIP 80/TCP
+kubectl get svc webapp                                # ClusterIP 80/TCP
 helm list                                            # STATUS: deployed
 
 # Testar resposta HTTP
-kubectl port-forward svc/webapp-webapp 8080:80 &
+kubectl port-forward svc/webapp 8080:80 &
 curl -s http://localhost:8080                         # HTML com commit SHA
 ```
 
@@ -178,7 +178,7 @@ Validacao completa do chart em cluster Kind — lint, deploy (REVISION 1 e 2), p
 |--------|-------------|
 | **Terraform** | 5 modulos reusaveis, inventories (dev/homol/prod), validation blocks, dynamic blocks, tags padronizadas |
 | **Helm** | NetworkPolicy, HPA (CPU + memoria), values de producao, probes configuraveis, checksum annotation |
-| **CI/CD** | Deploy atomico com rollback, concurrency control, path filter, smoke test pos-deploy |
+| **CI/CD** | GitFlow (feature/develop/release/hotfix), concurrency control, path filter, smoke test pos-deploy |
 | **Seguranca** | IMDSv2, EBS encriptado, S3 com 4 bloqueios de acesso publico, SG least-privilege |
 | **Docs** | Runbooks, Playbooks, ADR, Security Baseline, anotacoes de experiencia profissional |
 

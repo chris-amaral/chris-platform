@@ -1,6 +1,6 @@
 # Playbook: Resposta a Incidentes
 
-> Ultima atualizacao: 2025-04 | Autor: Christopher Amaral
+> Ultima atualizacao: 2026-04 | Autor: Christopher Amaral
 
 ---
 
@@ -107,7 +107,7 @@ GitHub Actions > CI - Deploy K8s > Job: Deploy > Status: Failed
 
 ### Mitigar
 ```bash
-# O --atomic ja fez rollback automatico!
+# Helm rollback para versao anterior
 # Verifique que a versao anterior esta rodando:
 ssh -i key ubuntu@<EC2_IP>
 helm list
@@ -125,7 +125,7 @@ kubectl get pods
 | Helm upgrade | `timed out waiting` | Pod não fica Ready. Verifique resources e probes |
 | Smoke test | `curl failed` | Aplicacao respondendo em outra porta? Verifique `targetPort` |
 
-> **Ponto importante**: A flag `--atomic` salva aqui. Sem ela, um deploy falhado deixa o Helm em estado "pending-upgrade" e você precisa fazer `helm rollback` manual. Com `--atomic`, o rollback e automatico e a versao anterior continua servindo. Nas equipes que trabalhei, `--atomic` e obrigatorio em todos os deploys de produção.
+> **Ponto importante**: Em caso de falha no deploy, use `helm rollback webapp <revision>` para voltar ao estado anterior. O pipeline usa `--force --wait` que garante que o deploy funcione tanto no primeiro install quanto em upgrades. Para produção com releases estabelecidas, `--atomic` e recomendado para rollback automatico. Nas equipes que trabalhei, rollback manual com `helm rollback` era o procedimento padrao, com alertas automaticos no Slack/PagerDuty.
 
 ---
 

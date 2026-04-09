@@ -1,6 +1,6 @@
 # Runbook: Provisionamento de Infraestrutura com Terraform
 
-> Ultima atualizacao: 2025-04 | Autor: Christopher Amaral
+> Ultima atualizacao: 2026-04 | Autor: Christopher Amaral
 
 ---
 
@@ -171,7 +171,7 @@ terraform plan -var-file=inventories/prod/terraform.tfvars
 | `project_name` | Prefixo dos recursos | projeto-christopher | projeto-christopher | projeto-christopher |
 | `environment` | Ambiente | dev | homol | prod |
 | `squad` | Squad responsavel | projeto-christopher | projeto-christopher | projeto-christopher |
-| `instance_type` | Tipo EC2 | t3.medium | t3.medium | t3.large |
+| `instance_type` | Tipo EC2 | m7i-flex.large | m7i-flex.large | m7i-flex.xlarge |
 | `vpc_cidr` | CIDR da VPC | 10.10.0.0/16 | 10.20.0.0/16 | 10.30.0.0/16 |
 | `enable_nodeport_access` | NodePort no SG | true | false | false |
 

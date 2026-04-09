@@ -1,6 +1,6 @@
 # Runbook: Helm Chart — webapp
 
-> Ultima atualizacao: 2025-04 | Autor: Christopher Amaral
+> Ultima atualizacao: 2026-04 | Autor: Christopher Amaral
 
 ---
 
@@ -64,7 +64,7 @@ helm upgrade --install webapp ./charts/webapp \
   --set customMessage="produção - v1.0"
 ```
 
-> **Ponto importante**: O `--install` no `upgrade` e essencial para idempotencia — se a release não existe, ele cria; se existe, atualiza. No pipeline uso sempre `upgrade --install --atomic` para garantir rollback automatico em caso de falha.
+> **Ponto importante**: O `--install` no `upgrade` e essencial para idempotencia — se a release não existe, ele cria; se existe, atualiza. No pipeline uso `upgrade --install --force --wait` para garantir que o deploy funcione tanto no primeiro install quanto em upgrades.
 
 ### Usar com outra imagem (chart generico)
 
@@ -108,10 +108,10 @@ helm install meu-app ./charts/webapp \
 | `service.targetPort` | Porta do container | `80` | `80` |
 | `customMessage` | Mensagem no index.html | `Hello World da AsapTech` | - |
 | `configMap.enabled` | Montar HTML customizado | `true` | `true` |
-| `resources.requests.cpu` | Request de CPU | `100m` | `250m` |
-| `resources.limits.cpu` | Limite de CPU | `250m` | `500m` |
-| `resources.requests.memory` | Request de memoria | `128Mi` | `256Mi` |
-| `resources.limits.memory` | Limite de memoria | `256Mi` | `512Mi` |
+| `resources.requests.cpu` | Request de CPU | `50m` | `250m` |
+| `resources.limits.cpu` | Limite de CPU | `100m` | `500m` |
+| `resources.requests.memory` | Request de memoria | `32Mi` | `256Mi` |
+| `resources.limits.memory` | Limite de memoria | `64Mi` | `512Mi` |
 | `autoscaling.enabled` | HPA ativo | `false` | `true` |
 | `autoscaling.minReplicas` | Minimo de replicas | `1` | `3` |
 | `autoscaling.maxReplicas` | Maximo de replicas | `5` | `10` |
@@ -137,7 +137,7 @@ kubectl get pods -l app.kubernetes.io/name=webapp -o wide
 kubectl logs -l app.kubernetes.io/name=webapp --tail=20
 
 # Testar resposta HTTP
-kubectl port-forward svc/webapp-webapp 8080:80 &
+kubectl port-forward svc/webapp 8080:80 &
 curl -s http://localhost:8080
 kill %1
 

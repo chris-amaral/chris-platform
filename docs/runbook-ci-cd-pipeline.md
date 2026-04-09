@@ -1,12 +1,12 @@
 # Runbook: Pipeline CI/CD — GitHub Actions
 
-> Ultima atualizacao: 2025-04 | Autor: Christopher Amaral
+> Ultima atualizacao: 2026-04 | Autor: Christopher Amaral
 
 ---
 
 ## TL;DR
 
-Pipeline automatizado que valida o Helm chart (lint + template dry-run), autentica na AWS via OIDC, conecta na EC2 via SSH e executa `helm upgrade --install --atomic` com a mensagem customizada contendo o commit SHA.
+Pipeline automatizado que valida o Helm chart (lint + template dry-run), autentica na AWS via OIDC, conecta na EC2 via SSH e executa `helm upgrade --install --force` com a mensagem customizada contendo o commit SHA. Suporta GitFlow com branches `main`, `develop`, `feature/*`, `release/*` e `hotfix/*`.
 
 ---
 
@@ -24,7 +24,9 @@ Pipeline automatizado que valida o Helm chart (lint + template dry-run), autenti
 ## Fluxo do Pipeline
 
 ```
-  Push/PR na main (somente quando charts/** muda)
+  Push (main/develop/feature/release/hotfix)
+  ou PR (main/develop)
+  — somente quando charts/** ou terraform/** muda
        |
        v
   +---------------------+
@@ -52,10 +54,9 @@ Pipeline automatizado que valida o Helm chart (lint + template dry-run), autenti
   |  5. scp chart -> EC2 |
   |  6. ssh: helm upgrade|
   |     --install        |
-  |     --atomic         |
-  |  7. Rollout status   |
-  |  8. Smoke test       |
-  |  9. Cleanup          |
+  |     --force          |
+  |  7. Smoke test       |
+  |  8. Cleanup          |
   +---------------------+
        |
        v
@@ -68,16 +69,28 @@ Pipeline automatizado que valida o Helm chart (lint + template dry-run), autenti
   +---------------------+
 ```
 
+### Branches Suportados (GitFlow)
+
+| Branch | Lint | Deploy |
+|--------|------|--------|
+| `main` (push) | Sim | Sim |
+| `main` (PR) | Sim | Nao |
+| `develop` (push) | Sim | Nao |
+| `develop` (PR) | Sim | Nao |
+| `feature/*` (push) | Sim | Nao |
+| `release/*` (push) | Sim | Nao |
+| `hotfix/*` (push) | Sim | Nao |
+
 ### Quando executa o que?
 
 | Evento | Lint | Deploy |
 |--------|------|--------|
-| Pull Request para `main` | Sim | não |
-| Push na `main` (charts mudou) | Sim | Sim |
-| Push na `main` (so terraform mudou) | não | não |
-| Push em feature branch | não | não |
+| Push na `main` (charts ou terraform mudou) | Sim | Sim |
+| Pull Request para `main` ou `develop` | Sim | Nao |
+| Push em `feature/*`, `develop`, `release/*`, `hotfix/*` | Sim | Nao |
+| Push que nao altera `charts/**` nem `terraform/**` | Nao | Nao |
 
-> **Ponto importante**: O path filter (`paths: charts/**`) e intencional. Se so o Terraform mudou, não faz sentido redeployar a aplicacao. Em projetos maiores, costumo separar workflows por tipo de mudanca — infra, app, docs. Aqui simplifiquei em um so workflow focado no chart.
+> **Ponto importante**: O path filter (`paths: charts/**, terraform/**`) e intencional. Mudancas em docs ou README nao triggam o pipeline. Em projetos maiores, costumo separar workflows por tipo de mudanca — infra, app, docs. A estrutura GitFlow permite que cada branch valide o lint antes de mergear na main.
 
 ---
 
@@ -104,7 +117,7 @@ GitHub Actions                        AWS STS
 A IAM Role so aceita tokens que:
 - Vem do OIDC Provider do GitHub (`token.actions.githubusercontent.com`)
 - Tem audience `sts.amazonaws.com`
-- Sao do repositorio configurado (`repo:owner/repo:ref:refs/heads/*`)
+- Sao do repositorio configurado (`repo:owner/repo:ref:refs/heads/*` ou `repo:owner/repo:environment:*`)
 
 > **Ponto importante**: OIDC e o padrao que adoto em todas as pipelines que construo. Credenciais estaticas (access keys) representam um risco real — não expiram, podem vazar em logs, e sao dificeis de rotacionar em escala. Com OIDC, mesmo que alguem clone o workflow, não consegue assumir a role de outro repositorio. Em experiênciass anteriores, essa era uma exigencia da area de seguranca.
 
@@ -181,9 +194,9 @@ concurrency:
 
 - **concurrency group**: Apenas 1 deploy roda por vez no ambiente `dev`
 - **cancel-in-progress: false**: Deploys enfileirados esperam (não cancelam o anterior)
-- **--atomic**: Se o `helm upgrade` falhar, faz rollback automatico para a versao anterior
+- **--force**: Forca substituicao de resources, garantindo que o deploy funcione tanto no primeiro install quanto em upgrades
 
-> **Ponto importante**: O `--atomic` e uma licao que aprendi na pratica. Sem ele, um deploy que falha no readiness probe deixa a release em estado "failed" e o proximo `upgrade` pode dar conflito. Com `--atomic`, se qualquer pod não ficar Ready no timeout, tudo volta ao estado anterior automaticamente. Considero obrigatorio em qualquer ambiente.
+> **Ponto importante**: Inicialmente usamos `--atomic` (rollback automatico), mas ele falha no primeiro install quando nao ha release anterior para rollback. A flag `--force` resolve esse edge case. Em ambientes com releases ja estabelecidas, `--atomic` e recomendado. A evolucao e migrar para GitOps com ArgoCD que gerencia rollback automaticamente.
 
 > **Ponto importante**: Este pipeline usa o modelo push-based (CI faz o deploy). A evolucao natural e migrar para pull-based com ArgoCD, onde o cluster puxa as mudancas do Git automaticamente. Isso elimina a necessidade de SSH, melhora a auditoria (cada deploy = um commit) e facilita multi-cluster. Tive experiência com ArgoCD em projetos anteriores e o ganho em rastreabilidade e rollback e significativo. Para este escopo, o modelo push atende bem e demonstra o fluxo de forma clara.
 
@@ -201,7 +214,7 @@ kubectl get pods -l app.kubernetes.io/instance=webapp  # Pod Running?
 kubectl logs -l app.kubernetes.io/instance=webapp      # Sem erros?
 
 # Testar a mensagem
-kubectl port-forward svc/webapp-webapp 8080:80 &
+kubectl port-forward svc/webapp 8080:80 &
 curl -s http://localhost:8080 | grep "Commit"        # Tem o SHA?
 kill %1
 ```
