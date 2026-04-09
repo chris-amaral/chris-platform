@@ -84,7 +84,7 @@ jobs:
             ${{ env.CHART_PATH }} \
             ubuntu@${{ secrets.EC2_SSH_HOST }}:/tmp/webapp-chart
 
-      - name: Helm upgrade --install
+      - name: Helm deploy
         run: |
           SHORT_SHA="${{ github.sha }}"
           SHORT_SHA="${SHORT_SHA:0:7}"
@@ -94,17 +94,11 @@ jobs:
             ubuntu@${{ secrets.EC2_SSH_HOST }} << EOF
           set -e
           kubectl get nodes
-
-          # Limpar release com falha se existir
-          helm status ${{ env.RELEASE_NAME }} 2>/dev/null && helm uninstall ${{ env.RELEASE_NAME }} --wait || true
-
-          helm install ${{ env.RELEASE_NAME }} /tmp/webapp-chart \
+          helm upgrade --install ${{ env.RELEASE_NAME }} /tmp/webapp-chart \
             --set customMessage="${DEPLOY_MSG}" \
             --set image.repository=nginx \
             --set image.tag=1.27-alpine \
-            --wait --timeout 180s
-
-          kubectl rollout status deployment/${{ env.RELEASE_NAME }}-webapp --timeout=60s
+            --wait --timeout 120s --force
           kubectl get pods -l app.kubernetes.io/instance=${{ env.RELEASE_NAME }} -o wide
           kubectl get svc ${{ env.RELEASE_NAME }}-webapp
           rm -rf /tmp/webapp-chart
