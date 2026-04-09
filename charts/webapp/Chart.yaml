@@ -1,0 +1,20 @@
+apiVersion: v2
+name: webapp
+description: |
+  Chart generico para deploy de aplicacoes web no Kubernetes.
+  Suporta qualquer imagem de container com parametrizacao completa
+  de recursos, health checks, autoscaling e network policies.
+type: application
+version: 1.0.0
+appVersion: "1.27.0"
+keywords:
+  - webapp
+  - nginx
+  - kubernetes
+  - generic
+maintainers:
+  - name: Christopher Amaral
+    email: christopheramaral1996@gmail.com
+home: https://github.com/christopher-amaral/projeto-christopher
+sources:
+  - https://github.com/christopher-amaral/projeto-christopher

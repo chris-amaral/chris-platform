@@ -1,0 +1,11 @@
+aws_region         = "us-east-1"
+project_name       = "projeto-christopher"
+environment        = "dev"
+squad              = "projeto-christopher"
+vpc_cidr           = "10.10.0.0/16"
+public_subnet_cidr = "10.10.1.0/24"
+instance_type      = "t3.micro"
+key_name           = ""
+allowed_ssh_cidrs      = ["0.0.0.0/0"]
+enable_nodeport_access = true
+github_repository      = "chris-amaral/DevOps-CICD"

@@ -1,0 +1,129 @@
+name: CI/CD - Deploy K8s
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "charts/**"
+      - ".github/workflows/ci-deploy-k8s.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "charts/**"
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+  CHART_PATH: ./charts/webapp
+  RELEASE_NAME: webapp
+
+# Para expandir para multi-ambiente (develop/homol/prod), basta:
+# - Criar branches develop e release/*
+# - Duplicar o job deploy com environment: homol / prod
+# - Adicionar GitHub Secrets por environment
+# - Usar concurrency group por ambiente (deploy-dev, deploy-homol, deploy-prod)
+
+jobs:
+  lint:
+    name: Helm Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/setup-helm@v4
+        with:
+          version: v3.15.0
+
+      - name: Lint (strict)
+        run: helm lint ${{ env.CHART_PATH }} --strict
+
+      - name: Template dry-run (default)
+        run: helm template ${{ env.RELEASE_NAME }} ${{ env.CHART_PATH }} --debug > /dev/null
+
+      - name: Template dry-run (production)
+        run: helm template ${{ env.RELEASE_NAME }} ${{ env.CHART_PATH }} -f ${{ env.CHART_PATH }}/values-production.yaml --debug > /dev/null
+
+  deploy:
+    name: Deploy (dev)
+    runs-on: ubuntu-latest
+    needs: lint
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: dev
+    concurrency:
+      group: deploy-dev
+      cancel-in-progress: false
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: AWS OIDC Auth
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.EC2_SSH_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || true
+
+      - name: EC2 Health Check
+        run: |
+          aws ec2 wait instance-status-ok \
+            --instance-ids ${{ secrets.EC2_INSTANCE_ID }} \
+            --region ${{ env.AWS_REGION }}
+
+      - name: Copy chart to EC2
+        run: |
+          scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -r \
+            ${{ env.CHART_PATH }} \
+            ubuntu@${{ secrets.EC2_SSH_HOST }}:/tmp/webapp-chart
+
+      - name: Helm upgrade --install
+        run: |
+          SHORT_SHA="${{ github.sha }}"
+          SHORT_SHA="${SHORT_SHA:0:7}"
+          DEPLOY_MSG="Hello World da AsapTech - Deploy realizado via CI/CD (Commit: ${SHORT_SHA})"
+
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+            ubuntu@${{ secrets.EC2_SSH_HOST }} << EOF
+            set -e
+            kubectl get nodes
+            helm upgrade --install ${{ env.RELEASE_NAME }} /tmp/webapp-chart \
+              --set customMessage="${DEPLOY_MSG}" \
+              --set image.repository=nginx \
+              --set image.tag=1.27-alpine \
+              --wait --timeout 180s --atomic
+            kubectl rollout status deployment/${{ env.RELEASE_NAME }}-webapp --timeout=60s
+            kubectl get pods -l app.kubernetes.io/instance=${{ env.RELEASE_NAME }} -o wide
+            kubectl get svc ${{ env.RELEASE_NAME }}-webapp
+            rm -rf /tmp/webapp-chart
+          EOF
+
+      - name: Smoke test
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+            ubuntu@${{ secrets.EC2_SSH_HOST }} << 'EOF'
+            POD=$(kubectl get pods -l app.kubernetes.io/instance=webapp -o jsonpath='{.items[0].metadata.name}')
+            kubectl exec $POD -- curl -sf http://localhost:80 | head -5
+          EOF
+
+      - name: Summary
+        if: always()
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+            ubuntu@${{ secrets.EC2_SSH_HOST }} << 'EOF'
+            echo "=== Releases ==="
+            helm list
+            echo ""
+            echo "=== Pods ==="
+            kubectl get pods -o wide
+            echo ""
+            echo "=== Services ==="
+            kubectl get svc
+          EOF
