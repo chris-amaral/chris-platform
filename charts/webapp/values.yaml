@@ -31,11 +31,11 @@ service:
 # Sempre defina limits e requests para evitar resource starvation no cluster.
 resources:
   requests:
-    cpu: 100m
-    memory: 128Mi
+    cpu: 50m
+    memory: 32Mi
   limits:
-    cpu: 250m
-    memory: 256Mi
+    cpu: 100m
+    memory: 64Mi
 
 # --- Custom HTML Message ----------------------------------------------------
 # Mensagem exibida no index.html do Nginx.
