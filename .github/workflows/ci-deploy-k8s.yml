@@ -2,14 +2,16 @@ name: CI/CD - Deploy K8s
 
 on:
   push:
-    branches: [main]
+    branches: [main, develop, "feature/**", "release/**", "hotfix/**"]
     paths:
       - "charts/**"
       - ".github/workflows/ci-deploy-k8s.yml"
+      - "terraform/**"
   pull_request:
-    branches: [main]
+    branches: [main, develop]
     paths:
       - "charts/**"
+      - "terraform/**"
 
 permissions:
   id-token: write
@@ -19,12 +21,6 @@ env:
   AWS_REGION: us-east-1
   CHART_PATH: ./charts/webapp
   RELEASE_NAME: webapp
-
-# Para expandir para multi-ambiente (develop/homol/prod), basta:
-# - Criar branches develop e release/*
-# - Duplicar o job deploy com environment: homol / prod
-# - Adicionar GitHub Secrets por environment
-# - Usar concurrency group por ambiente (deploy-dev, deploy-homol, deploy-prod)
 
 jobs:
   lint:
@@ -100,7 +96,7 @@ jobs:
             --set image.tag=1.27-alpine \
             --wait --timeout 120s --force
           kubectl get pods -l app.kubernetes.io/instance=${{ env.RELEASE_NAME }} -o wide
-          kubectl get svc ${{ env.RELEASE_NAME }}-webapp
+          kubectl get svc ${{ env.RELEASE_NAME }}
           rm -rf /tmp/webapp-chart
           EOF
 
@@ -108,8 +104,8 @@ jobs:
         run: |
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
             ubuntu@${{ secrets.EC2_SSH_HOST }} << 'EOF'
-            POD=$(kubectl get pods -l app.kubernetes.io/instance=webapp -o jsonpath='{.items[0].metadata.name}')
-            kubectl exec $POD -- curl -sf http://localhost:80 | head -5
+          POD=$(kubectl get pods -l app.kubernetes.io/instance=webapp -o jsonpath='{.items[0].metadata.name}')
+          kubectl exec $POD -- curl -sf http://localhost:80 | head -5
           EOF
 
       - name: Summary
@@ -117,12 +113,12 @@ jobs:
         run: |
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
             ubuntu@${{ secrets.EC2_SSH_HOST }} << 'EOF'
-            echo "=== Releases ==="
-            helm list
-            echo ""
-            echo "=== Pods ==="
-            kubectl get pods -o wide
-            echo ""
-            echo "=== Services ==="
-            kubectl get svc
+          echo "=== Releases ==="
+          helm list
+          echo ""
+          echo "=== Pods ==="
+          kubectl get pods -o wide
+          echo ""
+          echo "=== Services ==="
+          kubectl get svc
           EOF

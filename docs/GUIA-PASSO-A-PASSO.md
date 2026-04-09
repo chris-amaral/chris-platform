@@ -76,7 +76,7 @@ terraform apply -var-file=inventories/dev/terraform.tfvars -target=module.iam -a
 
 ---
 
-## 3. Provisionamento Real na AWS
+## 3. Provisionamento na AWS
 
 ### 3.1. Configuracao
 
