@@ -1,6 +1,6 @@
 # Runbook: Validacao de Deploy
 
-> Ultima atualizacao: 2025-04 | Autor: Christopher Amaral
+> Ultima atualizacao: 2026-04 | Autor: Christopher Amaral
 
 ---
 
@@ -38,7 +38,7 @@ cat /var/log/bootstrap-status
 # Se ainda não terminou (RUNNING ou arquivo ausente):
 tail -f /var/log/bootstrap-cluster.log
 
-# Tempo medio de bootstrap: 5-8 minutos na t3.medium
+# Tempo medio de bootstrap: 5-8 minutos na m7i-flex.large
 ```
 
 > **Ponto importante**: Se o status não muda de RUNNING depois de 15 minutos, algo travou. Os pontos mais comuns de falha sao: (1) Docker não instalou (repositorio indisponivel), (2) Kind não criou o cluster (memoria insuficiente). Sempre cheque o log completo antes de recriar a EC2.
@@ -94,10 +94,10 @@ kubectl logs -l app.kubernetes.io/name=webapp --tail=30
 
 # Service
 kubectl get svc | grep webapp
-# Esperado: webapp-webapp   ClusterIP   10.x.x.x   80/TCP
+# Esperado: webapp   ClusterIP   10.x.x.x   80/TCP
 
 # Testar HTTP
-kubectl port-forward svc/webapp-webapp 8080:80 &
+kubectl port-forward svc/webapp 8080:80 &
 curl -s http://localhost:8080
 # Esperado: HTML com customMessage
 kill %1
@@ -135,7 +135,7 @@ CLUSTER
 
 APLICACAO
 [ ] Pod webapp 1/1 Running, 0 restarts
-[ ] Service webapp-webapp criado (ClusterIP)
+[ ] Service webapp criado (ClusterIP)
 [ ] curl retorna HTML com customMessage
 [ ] Helm release status = deployed
 
@@ -160,7 +160,7 @@ CI/CD (se deploy via pipeline)
 | Pod CrashLoopBackOff | `kubectl logs <pod> --previous` | Imagem ou porta errada | Verifique `image` e `targetPort` |
 | Pod Pending | `kubectl describe pod <pod>` | Sem recursos no node | Reduza limits ou use instance maior |
 | Pod ImagePullBackOff | `kubectl describe pod <pod>` | Imagem não existe | Verifique `image.repository:tag` |
-| Service sem endpoint | `kubectl get endpoints webapp-webapp` | Labels não batem | Compare labels do pod com selector do service |
+| Service sem endpoint | `kubectl get endpoints webapp` | Labels não batem | Compare labels do pod com selector do service |
 | curl retorna 404 | `kubectl exec <pod> -- ls /usr/share/nginx/html` | ConfigMap não montou | Verifique `configMap.enabled` |
 
 > **Ponto importante**: O pattern que sigo para debug de pods e sempre o mesmo: `get pods` -> `describe pod` -> `logs` -> `exec`. Nessa ordem. 95% dos problemas aparecem no `describe` (events) ou nos `logs`. So use `exec` quando precisa investigar o filesystem do container.

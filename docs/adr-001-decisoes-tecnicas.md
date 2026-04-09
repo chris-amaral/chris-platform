@@ -1,6 +1,6 @@
 # ADR-001: Decisoes Tecnicas do Projeto
 
-> Status: Aceito | Data: 2025-04 | Autor: Christopher Amaral
+> Status: Aceito | Data: 2026-04 | Autor: Christopher Amaral
 
 ---
 
@@ -24,7 +24,7 @@ Projeto de infraestrutura como codigo para provisionar um cluster Kubernetes de 
 | CI/CD friendly | Muito | Parcial |
 | Persistencia apos reboot | não | Sim (VM driver) |
 
-**Justificativa**: Em EC2 `t3.medium` (4GB RAM), o Kind e mais viavel — consome menos e inicia mais rapido. não requer virtualizacao aninhada, que seria uma limitacao em instancias que não sao `*.metal`.
+**Justificativa**: Em EC2 `m7i-flex.large` (8GB RAM), o Kind e mais viavel — consome menos e inicia mais rapido. não requer virtualizacao aninhada, que seria uma limitacao em instancias que não sao `*.metal`.
 
 > **Ponto importante**: Na minha vivência profissional, Kind se mostrou mais estavel em ambientes de CI/CD. Em uma das empresas que trabalhei, migramos de Minikube para Kind e reduzimos o tempo dos pipelines de teste em 40%. A unica desvantagem do Kind e que não sobrevive reboot, mas para dev/CI isso e aceitavel.
 
@@ -89,19 +89,19 @@ Projeto de infraestrutura como codigo para provisionar um cluster Kubernetes de 
 
 ---
 
-## Decisao 6: t3.medium como Instance Type
+## Decisao 6: m7i-flex.large como Instance Type
 
-**Escolha**: t3.medium (2 vCPU, 4GB RAM)
+**Escolha**: m7i-flex.large (2 vCPU, 8GB RAM) — Free Tier eligible
 
-| Instance | vCPU | RAM | Custo/hora (us-east-1) | Suficiente para Kind? |
-|----------|------|-----|------------------------|----------------------|
-| t3.small | 2 | 2GB | ~$0.02 | Apertado |
-| t3.medium | 2 | 4GB | ~$0.04 | Sim (dev) |
-| t3.large | 2 | 8GB | ~$0.08 | Confortavel |
+| Instance | vCPU | RAM | Free Tier | Suficiente para Kind? |
+|----------|------|-----|-----------|----------------------|
+| t3.micro | 2 | 1GB | Sim | Insuficiente (OOMKill) |
+| t3.small | 2 | 2GB | Sim | Apertado |
+| m7i-flex.large | 2 | 8GB | Sim | Confortavel |
 
-**Justificativa**: Kind + 1 control-plane consome ~1.5GB RAM + Docker overhead. O `t3.medium` oferece margem para Helm deploys e operacoes do kubectl.
+**Justificativa**: Kind + Docker + Helm consome ~2GB RAM em repouso, e picos de deploy podem chegar a 3-4GB. Instancias menores (t3.micro, t3.small) resultaram em `context deadline exceeded` durante `helm upgrade`. O `m7i-flex.large` e elegivel ao Free Tier da AWS e oferece margem confortavel.
 
-> **Ponto importante**: Para produção com multi-node Kind ou workloads mais pesados, eu usaria `t3.large` no minimo. O `t3.medium` e o sweet spot para dev — barato o suficiente para deixar rodando e com recursos para não dar OOMKill.
+> **Ponto importante**: Durante o desenvolvimento, testei t3.micro (1GB) e t3.small (2GB) — ambas falharam no deploy por falta de memoria. Isso reforça a importancia de dimensionar corretamente mesmo em dev. O m7i-flex.large se mostrou o sweet spot: Free Tier, 8GB RAM, sem problemas de OOMKill.
 
 ---
 
@@ -125,13 +125,18 @@ Projeto de infraestrutura como codigo para provisionar um cluster Kubernetes de 
 
 ---
 
-## Decisao 9: Deploy Atomico com --atomic
+## Decisao 9: Deploy Strategy — --force vs --atomic
 
-**Escolha**: `helm upgrade --install --atomic --wait`
+**Escolha**: `helm upgrade --install --force --wait`
 
-**Justificativa**: A flag `--atomic` garante que se qualquer parte do deploy falhar (pod não fica Ready, probe falha, timeout), o Helm faz rollback automatico para a versao anterior. Sem ela, um deploy falhado deixa a release em estado inconsistente.
+**Justificativa**: Inicialmente planejado com `--atomic` (rollback automatico em falha), porem `--atomic` exige uma release previa para rollback — no primeiro install, não ha para onde voltar e o deploy falha. A flag `--force` resolve isso: forca a substituicao dos resources mesmo sem diff detectado, garantindo que o deploy funcione tanto no primeiro install quanto em upgrades subsequentes.
 
-> **Ponto importante**: Aprendi a importancia do `--atomic` em um projeto anterior quando um deploy com imagem quebrada ficou stuck em "pending-upgrade" e impediu deploys subsequentes por 2 horas ate alguem fazer rollback manual. Desde entao, `--atomic` e obrigatorio em todos os projetos que trabalho.
+| Flag | Comportamento | Primeiro install | Upgrade |
+|------|--------------|------------------|---------|
+| `--atomic` | Rollback automatico em falha | Falha (sem release anterior) | Funciona |
+| `--force` | Forca substituicao de resources | Funciona | Funciona |
+
+> **Ponto importante**: Em produção, com releases ja estabelecidas, `--atomic` e a escolha correta para rollback automatico. Para pipelines que fazem o primeiro deploy (como neste projeto), `--force` e mais resiliente. A evolucao natural e combinar ambos: `--force` no primeiro deploy e `--atomic` nos subsequentes, ou migrar para GitOps com ArgoCD que gerencia rollback automaticamente.
 
 ---
 
