@@ -4,13 +4,13 @@ output "instance_id" {
 }
 
 output "public_ip" {
-  description = "IP publico da instancia EC2"
-  value       = aws_instance.k8s_node.public_ip
+  description = "Elastic IP fixo da instancia EC2"
+  value       = aws_eip.k8s_node.public_ip
 }
 
 output "public_dns" {
-  description = "DNS publico da instancia EC2"
-  value       = aws_instance.k8s_node.public_dns
+  description = "DNS publico do Elastic IP"
+  value       = aws_eip.k8s_node.public_dns
 }
 
 output "private_ip" {
