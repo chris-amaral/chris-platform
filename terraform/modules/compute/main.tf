@@ -88,3 +88,12 @@ resource "aws_instance" "k8s_node" {
     ignore_changes = [ami, user_data]
   }
 }
+
+resource "aws_eip" "k8s_node" {
+  instance = aws_instance.k8s_node.id
+  domain   = "vpc"
+
+  tags = merge(var.tags, {
+    Name = "${local.name_prefix}-k8s-node-eip"
+  })
+}
