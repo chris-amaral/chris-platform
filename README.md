@@ -81,11 +81,14 @@ Ao final, exibe IP da EC2, chave SSH e todos os GitHub Secrets necessarios.
 Edite `terraform/inventories/dev/terraform.tfvars` antes de rodar o setup:
 
 ```hcl
-project_name       = "meu-projeto"        # Prefixo dos recursos
+project_name       = "meu-projeto"         # Prefixo dos recursos
 environment        = "dev"
 instance_type      = "m7i-flex.large"      # Free Tier eligible, 8GB RAM
+owner              = "seu.nome"            # Tag Owner nos recursos
 github_repository  = "meu-user/meu-repo"  # Para OIDC trust policy
 ```
+
+> Esse e o **unico arquivo** que precisa editar. O `setup.sh` gera o `backend.hcl` e exporta a chave SSH automaticamente.
 
 ### Trocar de ambiente
 

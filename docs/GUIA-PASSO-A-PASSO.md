@@ -110,7 +110,7 @@ cd terraform
 
 # Gerar backend.hcl (substituir ACCOUNT_ID pelo seu)
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-sed "s/<account_id>/$ACCOUNT_ID/; s/<project_name>/projeto-christopher/" \
+sed "s/<account_id>/$ACCOUNT_ID/; s/<project_name>/projeto-teste/" \
   inventories/dev/backend.hcl.example > inventories/dev/backend.hcl
 
 # Bootstrap
@@ -196,7 +196,8 @@ git push origin main
 
 ```bash
 cd terraform
-terraform destroy -var-file=inventories/dev/terraform.tfvars
+chmod +x teardown.sh
+./teardown.sh dev
 ```
 
 ---

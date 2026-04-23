@@ -26,6 +26,8 @@ Provisionamento completo da infraestrutura AWS (VPC, EC2 com Kind, S3, IAM com O
 
 ```
 terraform/
+├── setup.sh             # Bootstrap automatizado (um comando)
+├── teardown.sh          # Destruir recursos
 ├── main.tf              # Orquestra todos os modulos (dependency injection)
 ├── variables.tf         # Variaveis de entrada do root
 ├── outputs.tf           # Outputs consolidados de todos os modulos
@@ -35,15 +37,15 @@ terraform/
 ├── inventories/         # Um diretorio por ambiente
 │   ├── dev/
 │   │   ├── terraform.tfvars    # Variaveis especificas de dev
-│   │   └── backend.hcl         # Config do backend de dev
+│   │   └── backend.hcl.example # Template (gerado pelo setup.sh)
 │   ├── homol/
 │   └── prod/
 │
 └── modules/             # Modulos reusaveis e independentes
     ├── networking/      # VPC, Subnet, IGW, Route Table
-    ├── compute/         # EC2, Key Pair, User Data (bootstrap)
+    ├── compute/         # EC2, Key Pair, Elastic IP, User Data
     ├── security/        # Security Groups com dynamic blocks
-    ├── storage/         # S3 (state) + DynamoDB (lock)
+    ├── storage/         # S3 (state com account ID unico) + DynamoDB (lock)
     └── iam/             # IAM Roles, Instance Profile, OIDC Provider
 ```
 
@@ -71,95 +73,87 @@ storage (s3_bucket, dynamodb_table)      <-- independente
 
 ## Procedimento
 
-### 1. Configurar as variaveis do ambiente
+### 1. Personalizar variaveis (unico arquivo que precisa editar)
 
 ```bash
 cd terraform
-
-# Edite o inventory do ambiente desejado
-# IMPORTANTE: preencha allowed_ssh_cidrs com seu IP publico
 vi inventories/dev/terraform.tfvars
 ```
 
-Encontre seu IP publico:
-```bash
-curl -s https://ifconfig.me
-# Coloque no tfvars: allowed_ssh_cidrs = ["SEU_IP/32"]
+```hcl
+project_name       = "meu-projeto"          # Prefixo de todos os recursos
+owner              = "seu.nome"             # Tag Owner
+github_repository  = "seu-user/seu-repo"    # OIDC trust policy
+allowed_ssh_cidrs  = ["0.0.0.0/0"]          # Ou seu IP: ["SEU_IP/32"]
 ```
 
-### 2. Bootstrap — criar S3 e DynamoDB (primeira vez)
-
-> **Ponto importante**: Esse e o classico "chicken and egg problem" do Terraform — você precisa do S3 para guardar o state, mas o S3 e criado pelo Terraform. A solucao e criar com backend local primeiro e depois migrar. Em experiênciass anteriores, automatizei isso com um script de bootstrap dedicado.
+### 2. Setup automatizado (recomendado)
 
 ```bash
-# Desabilite temporariamente o backend remoto
+chmod +x setup.sh
+./setup.sh dev
+```
+
+O script `setup.sh` executa automaticamente:
+
+| Passo | O que faz |
+|-------|-----------|
+| 1 | Le `terraform.tfvars` e obtem AWS Account ID |
+| 2 | Gera `backend.hcl` com bucket unico (`projeto-tfstate-<account_id>`) |
+| 3 | Cria S3 + DynamoDB com backend local |
+| 4 | Migra state para S3 |
+| 5 | Provisiona toda a infraestrutura |
+| 6 | Exporta chave SSH para `ssh-key-dev.pem` |
+
+Ao final, exibe:
+- IP da EC2 (Elastic IP fixo)
+- Instance ID
+- Role ARN para GitHub Actions
+- Todos os GitHub Secrets necessarios
+- Comando SSH pronto para copiar
+
+> **Ponto importante**: O `setup.sh` resolve o classico "chicken and egg problem" do Terraform (precisa do S3 para state, mas o S3 e criado pelo Terraform). Em experiências anteriores, automatizei esse bootstrap com scripts similares. Aqui, basta rodar um comando.
+
+### 3. Setup manual (alternativa)
+
+Se preferir executar passo a passo:
+
+```bash
+# Gerar backend.hcl
+ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+PROJECT=$(grep 'project_name' inventories/dev/terraform.tfvars | sed 's/.*= *"//' | sed 's/".*//')
+cat > inventories/dev/backend.hcl <<EOF
+bucket         = "${PROJECT}-tfstate-${ACCOUNT_ID}"
+key            = "dev/terraform.tfstate"
+region         = "us-east-1"
+encrypt        = true
+dynamodb_table = "${PROJECT}-tfstate-lock"
+EOF
+
+# Bootstrap S3 + DynamoDB
 mv backend.tf backend.tf.bak
-
-# Init com backend local
 terraform init
+terraform apply -var-file=inventories/dev/terraform.tfvars -target=module.storage
 
-# Crie somente o modulo de storage
-terraform apply \
-  -var-file=inventories/dev/terraform.tfvars \
-  -target=module.storage
-
-# Confirme com "yes"
-```
-
-### 3. Migrar state para S3
-
-```bash
-# Restaure o backend
+# Migrar state para S3
 mv backend.tf.bak backend.tf
+terraform init -backend-config=inventories/dev/backend.hcl -migrate-state -force-copy
 
-# Init com backend remoto
-terraform init -backend-config=inventories/dev/backend.hcl
+# Provisionamento completo
+terraform apply -var-file=inventories/dev/terraform.tfvars
 
-# Terraform vai perguntar se quer migrar: responda "yes"
+# Exportar chave SSH
+terraform output -raw ssh_private_key > ssh-key-dev.pem
+chmod 600 ssh-key-dev.pem
 ```
 
-### 4. Provisionamento completo
+### 4. Trocar de ambiente
 
 ```bash
-# SEMPRE faca plan antes de apply
-terraform plan \
-  -var-file=inventories/dev/terraform.tfvars \
-  -out=dev.tfplan
-
-# Revise o plan com atencao
-# Apply
-terraform apply dev.tfplan
+./setup.sh homol    # ou: ./setup.sh prod
 ```
 
-> **Ponto importante**: NUNCA faco `terraform apply` sem `plan` salvo em arquivo. Isso evita que mudancas inesperadas sejam aplicadas se alguem alterar o codigo entre o plan e o apply. Nas equipes que participei, essa era uma regra inegociavel — e uma pratica que recomendo para qualquer ambiente.
-
-### 5. Exportar outputs
-
-```bash
-# Ver todos os outputs
-terraform output
-
-# Salvar chave SSH (se auto-gerada)
-terraform output -raw ssh_private_key > ~/.ssh/projeto-christopher-key
-chmod 600 ~/.ssh/projeto-christopher-key
-
-# Testar conexao
-ssh -i ~/.ssh/projeto-christopher-key ubuntu@$(terraform output -raw ec2_public_ip)
-```
-
-### 6. Trocar de ambiente
-
-```bash
-# Para homologacao
-terraform init -backend-config=inventories/homol/backend.hcl -reconfigure
-terraform plan -var-file=inventories/homol/terraform.tfvars
-
-# Para produção
-terraform init -backend-config=inventories/prod/backend.hcl -reconfigure
-terraform plan -var-file=inventories/prod/terraform.tfvars
-```
-
-> **Ponto importante**: O `-reconfigure` e essencial quando troca de backend. Sem ele, o Terraform tenta manter o state anterior e da conflito. Em projetos passados, eu abstraia isso com um Makefile: `make plan ENV=dev` — facilita demais o dia a dia.
+> **Ponto importante**: Cada ambiente gera seu proprio `backend.hcl` com state isolado no S3. não ha risco de sobrescrever o state de outro ambiente.
 
 ---
 
@@ -168,9 +162,10 @@ terraform plan -var-file=inventories/prod/terraform.tfvars
 | Variavel | Descricao | Dev | Homol | Prod |
 |----------|-----------|-----|-------|------|
 | `aws_region` | Regiao AWS | us-east-1 | us-east-1 | us-east-1 |
-| `project_name` | Prefixo dos recursos | projeto-christopher | projeto-christopher | projeto-christopher |
+| `project_name` | Prefixo dos recursos | projeto-teste | projeto-teste | projeto-teste |
 | `environment` | Ambiente | dev | homol | prod |
-| `squad` | Squad responsavel | projeto-christopher | projeto-christopher | projeto-christopher |
+| `squad` | Squad responsavel | projeto-teste | projeto-teste | projeto-teste |
+| `owner` | Responsavel (tag) | christopher.amaral | christopher.amaral | christopher.amaral |
 | `instance_type` | Tipo EC2 | m7i-flex.large | m7i-flex.large | m7i-flex.xlarge |
 | `vpc_cidr` | CIDR da VPC | 10.10.0.0/16 | 10.20.0.0/16 | 10.30.0.0/16 |
 | `enable_nodeport_access` | NodePort no SG | true | false | false |
@@ -218,11 +213,12 @@ kubectl get nodes                  # 1 node Ready
 ## Destruicao
 
 ```bash
-# CUIDADO: destroi toda a infra do ambiente
-terraform destroy -var-file=inventories/dev/terraform.tfvars
+# Via script
+chmod +x teardown.sh
+./teardown.sh dev
 
-# O bucket S3 tem prevent_destroy — remova manualmente se necessario:
-# aws s3 rb s3://projeto-christopher-tfstate --force
+# Ou manualmente
+terraform destroy -var-file=inventories/dev/terraform.tfvars
 ```
 
 ---
