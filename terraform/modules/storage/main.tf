@@ -2,11 +2,15 @@
 # Module: storage
 # Description: S3 bucket for Terraform remote state + DynamoDB for state lock.
 #              Bucket has versioning, encryption and public access fully blocked.
+#              Bucket name includes AWS account ID to avoid global name collisions.
 # Author: Christopher Amaral
 ###############################################################################
 
+data "aws_caller_identity" "current" {}
+
 locals {
-  bucket_name = "${var.project_name}-tfstate"
+  account_id  = data.aws_caller_identity.current.account_id
+  bucket_name = "${var.project_name}-tfstate-${local.account_id}"
   table_name  = "${var.project_name}-tfstate-lock"
 }
 
@@ -18,10 +22,6 @@ resource "aws_s3_bucket" "tfstate" {
     Name    = local.bucket_name
     Purpose = "terraform-state"
   })
-
-  lifecycle {
-    prevent_destroy = true
-  }
 }
 
 resource "aws_s3_bucket_versioning" "tfstate" {

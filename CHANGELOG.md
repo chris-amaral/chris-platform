@@ -6,6 +6,31 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
 ---
 
+## [1.2.0] - 2026-04
+
+### Adicionado
+
+**Execucao por terceiros**
+- `setup.sh`: Script de bootstrap automatizado — um comando provisiona tudo
+- `teardown.sh`: Script para destruir recursos com confirmacao
+- `backend.hcl.example` em cada inventory (dev/homol/prod)
+- Bucket S3 com AWS account ID no nome (evita colisao global)
+- Chave SSH exportada automaticamente para arquivo pelo setup.sh
+
+### Alterado
+
+- Removido `prevent_destroy` do S3 bucket (facilita teardown em ambiente de teste)
+- `backend.hcl` agora e gerado dinamicamente pelo `setup.sh` (nao versionado)
+- README reescrito com secao "Quick Start" — setup completo em um comando
+
+### Corrigido
+
+- Bucket S3 com nome fixo impedia execucao em outras contas AWS
+- Key pair inacessivel para terceiros (agora exportada automaticamente)
+- `backend.hcl` desacoplado do `terraform.tfvars` — setup.sh gera ambos consistentes
+
+---
+
 ## [1.1.0] - 2026-04
 
 ### Adicionado

@@ -1,0 +1,7 @@
+# Gerado automaticamente pelo setup.sh
+# Nao edite manualmente — execute: ./setup.sh dev
+bucket         = "<project_name>-tfstate-<account_id>"
+key            = "dev/terraform.tfstate"
+region         = "us-east-1"
+encrypt        = true
+dynamodb_table = "<project_name>-tfstate-lock"

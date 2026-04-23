@@ -30,6 +30,12 @@ variable "squad" {
   type        = string
 }
 
+variable "owner" {
+  description = "Responsavel pelo projeto (usado nas tags)"
+  type        = string
+  default     = "devops"
+}
+
 # --- Networking -------------------------------------------------------------
 variable "vpc_cidr" {
   description = "Bloco CIDR da VPC"

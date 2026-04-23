@@ -31,16 +31,18 @@ Terraform modular provisiona EC2 com Kind cluster, Helm chart generico deploya a
 │   └── templates/                        # Manifests K8s parametrizados
 │
 ├── terraform/
+│   ├── setup.sh                          # Bootstrap automatizado (um comando)
+│   ├── teardown.sh                       # Destruir recursos
 │   ├── main.tf                           # Orquestracao dos modulos
-│   ├── inventories/                      # tfvars + backend por ambiente
+│   ├── inventories/                      # tfvars + backend.hcl.example por ambiente
 │   │   ├── dev/
 │   │   ├── homol/
 │   │   └── prod/
 │   └── modules/                          # Modulos reusaveis
 │       ├── networking/                   # VPC, Subnet, IGW, Routes
-│       ├── compute/                      # EC2, Key Pair, bootstrap script
+│       ├── compute/                      # EC2, Key Pair, Elastic IP, bootstrap
 │       ├── security/                     # Security Groups (dynamic blocks)
-│       ├── storage/                      # S3 State + DynamoDB Lock
+│       ├── storage/                      # S3 State + DynamoDB Lock (account ID unico)
 │       └── iam/                          # IAM Roles, OIDC Provider
 │
 └── docs/                                 # Runbooks, Playbooks, ADR, Security
@@ -48,30 +50,54 @@ Terraform modular provisiona EC2 com Kind cluster, Helm chart generico deploya a
 
 ---
 
-## Como Inicializar o Terraform
+## Quick Start
 
-Estruturado com **modulos reusaveis** e **inventories por ambiente** (dev, homol, prod). Cada ambiente tem seu proprio `terraform.tfvars` e `backend.hcl`.
+### Pre-requisitos
+
+- AWS CLI configurado (`aws configure`)
+- Terraform >= 1.5.0
+- Bash (Linux/macOS/WSL)
+
+### Setup completo (um comando)
 
 ```bash
-# Bootstrap: criar S3 + DynamoDB com backend local
 cd terraform
-mv backend.tf backend.tf.bak
-terraform init
-terraform apply -var-file=inventories/dev/terraform.tfvars -target=module.storage
-
-# Migrar state para S3
-mv backend.tf.bak backend.tf
-terraform init -backend-config=inventories/dev/backend.hcl
-
-# Provisionamento completo
-terraform plan -var-file=inventories/dev/terraform.tfvars -out=dev.tfplan
-terraform apply dev.tfplan
+chmod +x setup.sh
+./setup.sh dev
 ```
 
-Trocar de ambiente:
+O script `setup.sh` automatiza todo o bootstrap:
+
+1. Gera `backend.hcl` com nome de bucket unico (inclui AWS account ID)
+2. Cria S3 + DynamoDB para state remoto
+3. Migra o state para S3
+4. Provisiona toda a infraestrutura (VPC, EC2, IAM, Security Groups)
+5. Exporta a chave SSH para `terraform/ssh-key-dev.pem`
+
+Ao final, exibe IP da EC2, chave SSH e todos os GitHub Secrets necessarios.
+
+### Personalizar
+
+Edite `terraform/inventories/dev/terraform.tfvars` antes de rodar o setup:
+
+```hcl
+project_name       = "meu-projeto"        # Prefixo dos recursos
+environment        = "dev"
+instance_type      = "m7i-flex.large"      # Free Tier eligible, 8GB RAM
+github_repository  = "meu-user/meu-repo"  # Para OIDC trust policy
+```
+
+### Trocar de ambiente
+
 ```bash
-terraform init -backend-config=inventories/homol/backend.hcl -reconfigure
-terraform plan -var-file=inventories/homol/terraform.tfvars
+./setup.sh homol    # ou: ./setup.sh prod
+```
+
+### Destruir recursos
+
+```bash
+chmod +x teardown.sh
+./teardown.sh dev
 ```
 
 > Detalhes em: [docs/runbook-terraform-setup.md](docs/runbook-terraform-setup.md)
@@ -176,7 +202,7 @@ Validacao completa do chart em cluster Kind — lint, deploy (REVISION 1 e 2), p
 
 | Camada | Diferencial |
 |--------|-------------|
-| **Terraform** | 5 modulos reusaveis, inventories (dev/homol/prod), validation blocks, dynamic blocks, tags padronizadas |
+| **Terraform** | 5 modulos reusaveis, inventories (dev/homol/prod), setup.sh one-command bootstrap, bucket S3 com account ID unico, tags padronizadas |
 | **Helm** | NetworkPolicy, HPA (CPU + memoria), values de producao, probes configuraveis, checksum annotation |
 | **CI/CD** | GitFlow (feature/develop/release/hotfix), concurrency control, path filter, smoke test pos-deploy |
 | **Seguranca** | IMDSv2, EBS encriptado, S3 com 4 bloqueios de acesso publico, SG least-privilege |

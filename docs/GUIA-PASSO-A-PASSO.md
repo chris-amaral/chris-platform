@@ -88,38 +88,56 @@ aws sts get-caller-identity
 # Confirmacao de acesso a conta
 ```
 
-### 3.2. Bootstrap (S3 + DynamoDB para state remoto)
+### 3.2. Setup automatizado (um comando)
 
 ```bash
 cd terraform
+chmod +x setup.sh
+./setup.sh dev
+```
+
+O script executa automaticamente:
+1. Gera `backend.hcl` com bucket unico (inclui AWS account ID)
+2. Cria S3 + DynamoDB com backend local
+3. Migra state para S3
+4. Provisiona toda a infraestrutura
+5. Exporta chave SSH para `terraform/ssh-key-dev.pem`
+
+### 3.3. Setup manual (alternativa)
+
+```bash
+cd terraform
+
+# Gerar backend.hcl (substituir ACCOUNT_ID pelo seu)
+ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+sed "s/<account_id>/$ACCOUNT_ID/; s/<project_name>/projeto-christopher/" \
+  inventories/dev/backend.hcl.example > inventories/dev/backend.hcl
+
+# Bootstrap
 mv backend.tf backend.tf.bak
 terraform init
 terraform apply -var-file=inventories/dev/terraform.tfvars -target=module.storage
-```
 
-### 3.3. Migrar state para S3
-
-```bash
+# Migrar state para S3
 mv backend.tf.bak backend.tf
 terraform init -backend-config=inventories/dev/backend.hcl
-# Confirmar migracao com "yes"
+
+# Provisionamento completo
+terraform apply -var-file=inventories/dev/terraform.tfvars
+
+# Exportar chave SSH
+terraform output -raw ssh_private_key > ssh-key-dev.pem
+chmod 600 ssh-key-dev.pem
 ```
 
-### 3.4. Provisionamento completo
+### 3.4. Outputs
 
-```bash
-terraform plan -var-file=inventories/dev/terraform.tfvars -out=dev.tfplan
-terraform apply dev.tfplan
-```
-
-### 3.5. Outputs
+Apos o setup (automatico ou manual):
 
 ```bash
 terraform output ec2_public_ip
 terraform output ec2_instance_id
 terraform output github_actions_role_arn
-terraform output -raw ssh_private_key > ~/.ssh/projeto-christopher-key
-chmod 600 ~/.ssh/projeto-christopher-key
 ```
 
 ---
@@ -127,8 +145,8 @@ chmod 600 ~/.ssh/projeto-christopher-key
 ## 4. Validacao na EC2
 
 ```bash
-# SSH
-ssh -i ~/.ssh/projeto-christopher-key ubuntu@<EC2_PUBLIC_IP>
+# SSH (chave exportada pelo setup.sh)
+ssh -i terraform/ssh-key-dev.pem ubuntu@<EC2_PUBLIC_IP>
 
 # Cluster
 kubectl get nodes                                     # Ready

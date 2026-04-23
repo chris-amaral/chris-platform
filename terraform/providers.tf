@@ -27,7 +27,7 @@ provider "aws" {
       Environment = var.environment
       Squad       = var.squad
       ManagedBy   = "terraform"
-      Owner       = "christopher.amaral"
+      Owner       = var.owner
     }
   }
 }
