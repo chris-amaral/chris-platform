@@ -61,11 +61,31 @@ echo "[1/5] backend.hcl gerado: inventories/${ENV}/backend.hcl"
 
 # --- Bootstrap: S3 + DynamoDB com backend local ----------------------------
 echo "[2/5] Criando S3 + DynamoDB (backend local)..."
+
+# Limpar state anterior para evitar conflito de backend
+rm -rf .terraform .terraform.lock.hcl terraform.tfstate terraform.tfstate.backup 2>/dev/null
+
 if [ -f backend.tf ]; then
   mv backend.tf backend.tf.bak
 fi
 
 terraform init -input=false
+
+# Importar recursos existentes (caso ja existam de execucao anterior)
+echo "Verificando recursos existentes..."
+if aws s3api head-bucket --bucket "$BUCKET_NAME" 2>/dev/null; then
+  echo "Bucket $BUCKET_NAME ja existe. Importando..."
+  terraform import -var-file="$TFVARS" module.storage.aws_s3_bucket.tfstate "$BUCKET_NAME" 2>/dev/null || true
+  terraform import -var-file="$TFVARS" module.storage.aws_s3_bucket_versioning.tfstate "$BUCKET_NAME" 2>/dev/null || true
+  terraform import -var-file="$TFVARS" module.storage.aws_s3_bucket_server_side_encryption_configuration.tfstate "$BUCKET_NAME" 2>/dev/null || true
+  terraform import -var-file="$TFVARS" module.storage.aws_s3_bucket_public_access_block.tfstate "$BUCKET_NAME" 2>/dev/null || true
+fi
+
+if aws dynamodb describe-table --table-name "$TABLE_NAME" --region "$REGION" 2>/dev/null >/dev/null; then
+  echo "DynamoDB $TABLE_NAME ja existe. Importando..."
+  terraform import -var-file="$TFVARS" module.storage.aws_dynamodb_table.tfstate_lock "$TABLE_NAME" 2>/dev/null || true
+fi
+
 terraform apply \
   -var-file="$TFVARS" \
   -target=module.storage \
@@ -73,14 +93,25 @@ terraform apply \
 
 # --- Migrar state para S3 --------------------------------------------------
 echo "[3/5] Migrando state para S3..."
-mv backend.tf.bak backend.tf
+if [ -f backend.tf.bak ]; then
+  mv backend.tf.bak backend.tf
+fi
+
+rm -rf .terraform 2>/dev/null
 terraform init \
   -backend-config="inventories/${ENV}/backend.hcl" \
-  -migrate-state \
-  -force-copy
+  -input=false
 
 # --- Provisionamento completo ----------------------------------------------
 echo "[4/5] Provisionando infraestrutura completa..."
+
+# Importar OIDC provider se ja existir na conta
+OIDC_ARN="arn:aws:iam::${ACCOUNT_ID}:oidc-provider/token.actions.githubusercontent.com"
+if aws iam get-open-id-connect-provider --open-id-connect-provider-arn "$OIDC_ARN" 2>/dev/null >/dev/null; then
+  echo "OIDC Provider ja existe. Importando..."
+  terraform import -var-file="$TFVARS" module.iam.aws_iam_openid_connect_provider.github_actions "$OIDC_ARN" 2>/dev/null || true
+fi
+
 terraform apply \
   -var-file="$TFVARS" \
   -auto-approve

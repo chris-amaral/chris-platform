@@ -2,52 +2,6 @@
 
 Infraestrutura como Codigo (IaC) e automacao de deploy para cluster Kubernetes na AWS.
 
-Terraform modular provisiona EC2 com Kind cluster, Helm chart generico deploya aplicacoes, e GitHub Actions automatiza o ciclo completo com autenticacao OIDC (zero credenciais estaticas).
-
----
-
-## Stack
-
-| Ferramenta | Funcao |
-|------------|--------|
-| **Terraform** | Provisionamento AWS com modulos reusaveis, inventories por ambiente, Elastic IP |
-| **Helm** | Chart generico `webapp` para deploy de qualquer aplicacao web |
-| **Kind** | Cluster Kubernetes local (Docker-based) na EC2 |
-| **GitHub Actions** | Pipeline CI/CD com autenticacao OIDC e suporte GitFlow |
-
----
-
-## Estrutura do Projeto
-
-```
-.
-├── .github/workflows/
-│   └── ci-deploy-k8s.yml                # Pipeline CI/CD (lint + deploy)
-│
-├── charts/webapp/                        # Helm Chart generico
-│   ├── Chart.yaml
-│   ├── values.yaml                       # Valores padrao (dev)
-│   ├── values-production.yaml            # Override para producao
-│   └── templates/                        # Manifests K8s parametrizados
-│
-├── terraform/
-│   ├── setup.sh                          # Bootstrap automatizado (um comando)
-│   ├── teardown.sh                       # Destruir recursos
-│   ├── main.tf                           # Orquestracao dos modulos
-│   ├── inventories/                      # tfvars + backend.hcl.example por ambiente
-│   │   ├── dev/
-│   │   ├── homol/
-│   │   └── prod/
-│   └── modules/                          # Modulos reusaveis
-│       ├── networking/                   # VPC, Subnet, IGW, Routes
-│       ├── compute/                      # EC2, Key Pair, Elastic IP, bootstrap
-│       ├── security/                     # Security Groups (dynamic blocks)
-│       ├── storage/                      # S3 State + DynamoDB Lock (account ID unico)
-│       └── iam/                          # IAM Roles, OIDC Provider
-│
-└── docs/                                 # Runbooks, Playbooks, ADR, Security
-```
-
 ---
 
 ## Quick Start
@@ -58,7 +12,19 @@ Terraform modular provisiona EC2 com Kind cluster, Helm chart generico deploya a
 - Terraform >= 1.5.0
 - Bash (Linux/macOS/WSL)
 
-### Setup completo (um comando)
+### 1. Personalizar (unico arquivo)
+
+```bash
+vi terraform/inventories/dev/terraform.tfvars
+```
+
+```hcl
+project_name       = "meu-projeto"         # Prefixo dos recursos
+owner              = "seu.nome"            # Tag Owner
+github_repository  = "seu-user/seu-repo"   # OIDC trust policy
+```
+
+### 2. Provisionar tudo
 
 ```bash
 cd terraform
@@ -66,111 +32,117 @@ chmod +x setup.sh
 ./setup.sh dev
 ```
 
-O script `setup.sh` automatiza todo o bootstrap:
+O script faz tudo automaticamente:
+- Gera `backend.hcl` com bucket S3 unico (inclui AWS Account ID)
+- Cria S3 + DynamoDB para state remoto
+- Provisiona VPC, EC2, Security Groups, IAM com OIDC
+- Exporta chave SSH para `terraform/ssh-key-dev.pem`
 
-1. Gera `backend.hcl` com nome de bucket unico (inclui AWS account ID)
-2. Cria S3 + DynamoDB para state remoto
-3. Migra o state para S3
-4. Provisiona toda a infraestrutura (VPC, EC2, IAM, Security Groups)
-5. Exporta a chave SSH para `terraform/ssh-key-dev.pem`
+Ao final exibe: IP da EC2, Role ARN, comando SSH e GitHub Secrets.
 
-Ao final, exibe IP da EC2, chave SSH e todos os GitHub Secrets necessarios.
-
-### Personalizar
-
-Edite `terraform/inventories/dev/terraform.tfvars` antes de rodar o setup:
-
-```hcl
-project_name       = "meu-projeto"         # Prefixo dos recursos
-environment        = "dev"
-instance_type      = "m7i-flex.large"      # Free Tier eligible, 8GB RAM
-owner              = "seu.nome"            # Tag Owner nos recursos
-github_repository  = "meu-user/meu-repo"  # Para OIDC trust policy
-```
-
-> Esse e o **unico arquivo** que precisa editar. O `setup.sh` gera o `backend.hcl` e exporta a chave SSH automaticamente.
-
-### Trocar de ambiente
+### 3. Conectar na EC2
 
 ```bash
-./setup.sh homol    # ou: ./setup.sh prod
+ssh -i ssh-key-dev.pem ubuntu@<IP_EXIBIDO>
 ```
 
-### Destruir recursos
+Aguarde ~5-8 min para o bootstrap (Docker + Kind + kubectl + Helm).
+
+```bash
+cat /var/log/bootstrap-status    # SUCCESS = pronto
+kubectl get nodes                # Ready
+```
+
+### 4. Configurar GitHub Secrets
+
+Em **Settings > Secrets > Actions**, crie com os valores exibidos pelo setup.sh:
+
+| Secret | Valor |
+|--------|-------|
+| `AWS_ROLE_ARN` | ARN exibido pelo setup.sh |
+| `EC2_INSTANCE_ID` | Instance ID exibido pelo setup.sh |
+| `EC2_SSH_HOST` | IP exibido pelo setup.sh |
+| `EC2_SSH_PRIVATE_KEY` | Conteudo do arquivo `ssh-key-dev.pem` |
+
+### 5. Trigger do pipeline
+
+```bash
+git add .
+git commit -m "chore: trigger pipeline"
+git push origin main
+```
+
+O pipeline faz: Helm Lint → OIDC Auth → SSH → `helm upgrade --install` → Smoke Test.
+
+### 6. Validar deploy
+
+```bash
+# Na EC2
+kubectl get pods    # 1/1 Running
+helm list           # STATUS: deployed
+```
+
+### 7. Destruir recursos
 
 ```bash
 chmod +x teardown.sh
 ./teardown.sh dev
 ```
 
-> Detalhes em: [docs/runbook-terraform-setup.md](docs/runbook-terraform-setup.md)
+---
+
+## Estrutura
+
+```
+.
+├── .github/workflows/ci-deploy-k8s.yml    # Pipeline CI/CD
+├── charts/webapp/                          # Helm Chart generico
+├── terraform/
+│   ├── setup.sh                           # Bootstrap automatizado
+│   ├── teardown.sh                        # Destruir recursos
+│   ├── inventories/dev/terraform.tfvars   # Variaveis (unico arquivo para editar)
+│   └── modules/                           # networking, compute, security, storage, iam
+└── docs/                                  # Runbooks, Playbooks, ADR
+```
 
 ---
 
-## Como o GitHub Actions se Autentica
+## Stack
 
-O pipeline **nao usa** credenciais estaticas. Toda autenticacao e via **OIDC (OpenID Connect)**:
-
-```
-GitHub Actions                       AWS STS
-     |                                  |
-     |-- 1. JWT assinado (repo+branch)->|
-     |                                  |-- 2. Valida trust policy
-     |<-- 3. Credenciais temporarias ---|
-     |      (expiram em ~1h)            |
-```
-
-Apos autenticar na AWS, o pipeline conecta na EC2 via SSH, copia o chart com `scp` e executa `helm upgrade --install --force --wait`.
-
-| Secret | Descricao |
-|--------|-----------|
-| `AWS_ROLE_ARN` | ARN da IAM Role OIDC |
-| `EC2_INSTANCE_ID` | ID da EC2 |
-| `EC2_SSH_HOST` | IP publico da EC2 |
-| `EC2_SSH_PRIVATE_KEY` | Chave SSH privada |
-
-> Detalhes em: [docs/runbook-ci-cd-pipeline.md](docs/runbook-ci-cd-pipeline.md)
+| Ferramenta | Funcao |
+|------------|--------|
+| **Terraform** | 5 modulos reusaveis, inventories por ambiente, Elastic IP, OIDC |
+| **Helm** | Chart generico `webapp` — qualquer imagem, resource limits, HPA, probes |
+| **Kind** | Cluster Kubernetes (Docker-based) na EC2 |
+| **GitHub Actions** | CI/CD com OIDC, GitFlow (main/develop/feature/release/hotfix) |
 
 ---
 
-## Validar que o Pod esta Rodando
+## OIDC — Zero credenciais estaticas
 
-```bash
-# Na EC2
-kubectl get pods -l app.kubernetes.io/name=webapp    # 1/1 Running
-kubectl get svc webapp                                # ClusterIP 80/TCP
-helm list                                            # STATUS: deployed
-
-# Testar resposta HTTP
-kubectl port-forward svc/webapp 8080:80 &
-curl -s http://localhost:8080                         # HTML com commit SHA
+```
+GitHub Actions → JWT assinado → AWS STS → Credenciais temporarias (~1h)
 ```
 
-> Detalhes em: [docs/runbook-validacao-deploy.md](docs/runbook-validacao-deploy.md)
+O pipeline nao usa `AWS_ACCESS_KEY_ID`. Toda autenticacao e via OpenID Connect.
 
 ---
 
 ## Evidencias
 
-### Validacao Local (Kind)
+### Validacao Helm Chart (Kind)
 
-Validacao completa do chart em cluster Kind — lint, deploy (REVISION 1 e 2), pods Running, Service ClusterIP e mensagem customizada:
+![Validacao Helm Chart](docs/images/validacao-helm-chart.png)
 
-![Validacao Helm Chart - Kind Cluster](docs/images/validacao-helm-chart.png)
-
-### Terraform Validate
+### Terraform
 
 ![Terraform Validate](docs/images/terraform-validate.png)
 
-### Provisionamento AWS
-
 ![Terraform Apply](docs/images/terraform-apply.png)
 
-### Pod Rodando na EC2
+### EC2 + Pipeline
 
 ![Pod na EC2](docs/images/pod-ec2.png)
-
-### Pipeline GitHub Actions
 
 ![GitHub Actions](docs/images/github-actions.png)
 
@@ -178,89 +150,29 @@ Validacao completa do chart em cluster Kind — lint, deploy (REVISION 1 e 2), p
 
 ## Documentacao
 
-| Tipo | Documento | Conteudo |
-|------|-----------|----------|
-| **Runbook** | [Terraform Setup](docs/runbook-terraform-setup.md) | Bootstrap, inventories, modulos, state |
-| **Runbook** | [Helm Chart](docs/runbook-helm-chart.md) | Correcoes do chart original, parametros |
-| **Runbook** | [CI/CD Pipeline](docs/runbook-ci-cd-pipeline.md) | Fluxo, OIDC, Secrets, mensagem customizada |
-| **Runbook** | [Validacao de Deploy](docs/runbook-validacao-deploy.md) | Checklist pos-deploy |
-| **Playbook** | [Incident Response](docs/playbook-incident-response.md) | Pod crashando, cluster down, deploy falhou |
-| **Playbook** | [Rollback](docs/playbook-rollback.md) | Rollback Helm, Terraform e pipeline |
-| **Playbook** | [Scaling](docs/playbook-scaling-performance.md) | HPA, vertical scaling, diagnostico |
-| **Referencia** | [Decisoes Tecnicas (ADR)](docs/adr-001-decisoes-tecnicas.md) | Kind vs Minikube, SSH vs SSM, OIDC |
-| **Referencia** | [Security Baseline](docs/security-baseline.md) | Controles de seguranca por camada |
-| **Referencia** | [Links](docs/links-e-referencias.md) | Documentacao oficial AWS, Terraform, Helm, K8s |
+| Tipo | Documento |
+|------|-----------|
+| Runbook | [Terraform Setup](docs/runbook-terraform-setup.md) |
+| Runbook | [Helm Chart](docs/runbook-helm-chart.md) |
+| Runbook | [CI/CD Pipeline](docs/runbook-ci-cd-pipeline.md) |
+| Runbook | [Validacao de Deploy](docs/runbook-validacao-deploy.md) |
+| Playbook | [Incident Response](docs/playbook-incident-response.md) |
+| Playbook | [Rollback](docs/playbook-rollback.md) |
+| Playbook | [Scaling](docs/playbook-scaling-performance.md) |
+| ADR | [Decisoes Tecnicas](docs/adr-001-decisoes-tecnicas.md) |
+| Referencia | [Security Baseline](docs/security-baseline.md) |
+| Referencia | [Links](docs/links-e-referencias.md) |
 
 ---
 
 ## Diferenciais
 
-### Extras solicitados na avaliacao
-
-- **Abstracao**: Chart generico `webapp` que suporta qualquer imagem (nao apenas Nginx)
-- **Recursos**: Resource limits e requests de CPU/Memoria em todos os pods
-- **Seguranca OIDC**: Autenticacao via OpenID Connect — zero static keys
-
-### Alem do solicitado
-
-| Camada | Diferencial |
-|--------|-------------|
-| **Terraform** | 5 modulos reusaveis, inventories (dev/homol/prod), setup.sh one-command bootstrap, bucket S3 com account ID unico, tags padronizadas |
-| **Helm** | NetworkPolicy, HPA (CPU + memoria), values de producao, probes configuraveis, checksum annotation |
-| **CI/CD** | GitFlow (feature/develop/release/hotfix), concurrency control, path filter, smoke test pos-deploy |
-| **Seguranca** | IMDSv2, EBS encriptado, S3 com 4 bloqueios de acesso publico, SG least-privilege |
-| **Docs** | Runbooks, Playbooks, ADR, Security Baseline, anotacoes de experiencia profissional |
-
----
-
-## Visao de Engenharia: Projetos em Escala
-
-O que foi entregue atende o escopo do teste. Abaixo, registro como estruturo projetos em ambientes corporativos — visao que trago de mais de 6 anos como DevOps/SRE.
-
-### Organization Templates
-
-Em ambientes corporativos, o caminho para padronizacao e ter **template repositories** na Organization:
-
-- `template-app-backend` — Dockerfile, Helm chart, workflows de CI/CD, CODEOWNERS
-- `template-app-frontend` — adaptado para frontend (build de assets, CDN)
-- `template-infra` — Terraform modules, inventories, workflows de plan/apply
-
-Novo micro-servico nasce com **um clique**, ja com CI/CD, linting e seguranca configurados.
-
-### Reusable Workflows
-
-Templates consomem **reusable workflows** centralizados (ex: `org/shared-workflows`):
-
-- Workflow de build/test/deploy em **um unico lugar**, chamado via `uses: org/shared-workflows/.github/workflows/ci-build.yml@v2`
-- Melhorias propagadas automaticamente para todos os repositorios
-- Times novos preenchem variaveis no template e tudo funciona
-
-### GitHub App Token
-
-Automacao cross-repo usa **GitHub App** instalado na Organization — mais seguro que PATs, com escopo granular, expiracao em 1h e auditoria vinculada ao App.
-
-### RBAC por Squad
-
-Cada squad tem sigla (ex: `squad-payments`) com teams escalonados:
-
-| Team | Permissao |
-|------|-----------|
-| `squad-payments-read` | Read |
-| `squad-payments-dev` | Write |
-| `squad-payments-maintainer` | Maintain |
-| `platform-sre` | Admin (cross) |
-
-### GitFlow Adaptado
-
-```
-feature/* → develop (SonarQube + SAST) → release/* → main (producao)
-```
-
-> **Ponto importante**: A imagem Docker construida na `develop` e **promovida** para producao, nao reconstruida. Isso garante que o binario validado e exatamente o mesmo que vai para prod.
-
-### Por que Isso Importa
-
-Padronizacao de templates, reusable workflows e RBAC por squad se paga em menos de 3 meses — em velocidade de onboarding, reducao de incidentes e consistencia entre servicos.
+| Camada | O que foi feito |
+|--------|----------------|
+| **Terraform** | 5 modulos, inventories (dev/homol/prod), setup.sh automatizado, bucket S3 com account ID |
+| **Helm** | Chart generico, NetworkPolicy, HPA, probes, values de producao, checksum annotation |
+| **CI/CD** | GitFlow, OIDC, concurrency control, path filter, smoke test |
+| **Seguranca** | IMDSv2, EBS encriptado, S3 bloqueado, SG least-privilege, zero static keys |
 
 ---
 
