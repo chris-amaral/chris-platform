@@ -46,13 +46,18 @@ jobs:
     name: Trivy - Vulnerability Scan
     runs-on: ubuntu-latest
     needs: lint
+    # Permissoes minimas para o codeql-action/upload-sarif funcionar:
+    #   contents: read         — checkout
+    #   security-events: write — publicar SARIF em "Security > Code scanning"
+    #   actions: read          — a action consulta o run atual (telemetria + correlation)
     permissions:
       contents: read
       security-events: write
+      actions: read
     steps:
       - uses: actions/checkout@v4
 
-      - name: Trivy - scan da imagem nginx (default values)
+      - name: Trivy - scan da imagem nginx (SARIF + tabela)
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: "nginx:1.27-alpine"
@@ -72,19 +77,48 @@ jobs:
           format: "sarif"
           output: "trivy-config.sarif"
 
-      - name: Upload SARIF (image)
+      # Tabela legivel direto no log da Action (independente de Code Scanning).
+      # Roda mesmo se o SARIF upload abaixo falhar — assim a evidencia de scan
+      # vai sempre aparecer em algum lugar.
+      - name: Trivy - imprimir resumo no log
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: "nginx:1.27-alpine"
+          severity: "CRITICAL,HIGH"
+          exit-code: "0"
+          ignore-unfixed: true
+          format: "table"
+
+      # Upload para "Security > Code scanning". Em repo privado SEM GitHub
+      # Advanced Security, o endpoint retorna 403 — por isso continue-on-error.
+      # No repo publico (ou privado com GHAS), os achados aparecem em Security.
+      - name: Upload SARIF da imagem (Code Scanning)
         if: always()
+        continue-on-error: true
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: trivy-image.sarif
           category: trivy-image
 
-      - name: Upload SARIF (config)
+      - name: Upload SARIF do IaC (Code Scanning)
         if: always()
+        continue-on-error: true
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: trivy-config.sarif
           category: trivy-config
+
+      # Fallback resiliente: SARIF como artifact da run, util quando Code
+      # Scanning nao esta habilitado no repo.
+      - name: Upload SARIF como artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-sarif-${{ github.run_id }}
+          path: |
+            trivy-image.sarif
+            trivy-config.sarif
+          retention-days: 30
 
   deploy:
     name: Deploy (dev)
