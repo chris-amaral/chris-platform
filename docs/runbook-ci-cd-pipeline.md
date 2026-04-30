@@ -172,7 +172,7 @@ terraform output -raw ssh_private_key
 O pipeline injeta automaticamente no Nginx:
 
 ```
-Hello World da AsapTech - Deploy realizado via CI/CD (Commit: abc1234)
+chris-platform - Deploy via GitHub Actions por Christopher Amaral (Commit: abc1234)
 ```
 
 Como funciona:

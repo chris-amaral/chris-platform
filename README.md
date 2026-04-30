@@ -1,181 +1,169 @@
-# DevOps-CICD
+# chris-platform — DevOps & GitOps na AWS
 
-Infraestrutura como Codigo (IaC) e automacao de deploy para cluster Kubernetes na AWS.
+> Laboratorio pessoal de Christopher Amaral para exercitar, na pratica, o que vivi nos ultimos seis anos como engenheiro de infraestrutura: provisionamento como codigo, pipelines confiaveis e GitOps de verdade. Aqui o objetivo nao e ostentar uma stack — e mostrar **como eu penso** quando coloco uma plataforma no ar.
 
 ---
 
-## Quick Start
+## Por que esse repositorio existe
 
-### Pre-requisitos
+Trabalho com infraestrutura desde 2017 (Lojas Renner, iFood/Zoop, EDCS, Itau Latam) e ja entreguei plataformas de pagamento com milhares de microservicos, pipelines de CI/CD do zero e observabilidade centralizada. Mas todo profissional de SRE sabe: o curriculo conta a historia, **o repositorio prova a historia**.
 
-- AWS CLI configurado (`aws configure`)
-- Terraform >= 1.5.0
-- Bash (Linux/macOS/WSL)
+Esse projeto e a versao "publicavel" do que vejo no dia a dia: um cluster Kubernetes provisionado por Terraform, um chart Helm generico que serve para 80% dos casos, um pipeline CI/CD de GitHub Actions com OIDC (zero credencial estatica) e — para fechar o ciclo — **ArgoCD** entregando GitOps de verdade. Tudo escrito do jeito que eu gostaria de encontrar quando entro em uma squad nova: simples de subir, simples de derrubar, com runbooks honestos para quando algo quebrar.
 
-### 1. Personalizar (unico arquivo)
+Se voce for CTO, gerente, tech lead ou apenas curioso, toda a documentacao detalhada esta em **[docs/](docs/)** — comece por **[docs/README.md](docs/README.md)** que serve de mapa.
+
+---
+
+## O que essa plataforma faz, em uma frase
+
+Provisiona uma EC2 na AWS, sobe um cluster Kubernetes (Kind), instala ArgoCD e entrega uma aplicacao web — tudo com um comando, sem credencial estatica e com dois caminhos de deploy (push via GitHub Actions e pull via ArgoCD) coexistindo de forma intencional.
+
+```text
++---------------------------+         +---------------------------+
+|       GitHub Actions       |  push   |      AWS (us-east-1)      |
+|  ci-deploy-k8s.yml         | ------> |                           |
+|   1. helm lint --strict    |  OIDC   |   EC2 m7i-flex.large      |
+|   2. AWS OIDC AssumeRole   | ======> |   +-----------------+     |
+|   3. SSH na EC2            |   SSH   |   |  Kind cluster   |     |
+|   4. helm upgrade --install| ------> |   |  +-----------+  |     |
++---------------------------+          |   |  |  ArgoCD   |  |     |
+                                       |   |  |  (GitOps) |  |     |
+       repo Git ---- pull ------------>|   |  +-----------+  |     |
+                                       |   |  webapp (Helm)  |     |
+                                       |   +-----------------+     |
+                                       +---------------------------+
+```
+
+---
+
+## A Stack — escolhas e motivos
+
+| Camada | Tecnologia | Por que essa? |
+|--------|-----------|---------------|
+| IaC | **Terraform** | 5 modulos reusaveis, inventories por ambiente, backend S3 com lock em DynamoDB. Modulos viram repositorios separados quando o projeto cresce. |
+| Cluster | **Kind sobre EC2** | Free Tier eligible, sobe em ~30s, ideal para validar o ciclo completo. Em produção, leia-se EKS. |
+| Chart | **Helm 3 (chart `webapp`)** | Generico, aceita qualquer imagem, com HPA, NetworkPolicy, probes, checksum annotation e Self-Healing opcional. |
+| CI/CD push | **GitHub Actions + OIDC** | Lint estrito + Trivy scan + deploy via SSH com OIDC AssumeRole. Zero `AWS_ACCESS_KEY_ID` em qualquer lugar. |
+| CI/CD pull | **ArgoCD (App-of-Apps)** | GitOps real: cluster reconcilia o estado a partir do Git, com `prune` e `selfHeal` ligados. |
+| Observabilidade | **Prometheus + Grafana + Loki** | Stack completa via ArgoCD App. Metricas, alertas, dashboards e logs centralizados — desligavel para Kind pequeno. |
+| Self-Healing | **CronJob no chart** | Detecta CrashLoopBackOff e deleta o pod para o ReplicaSet recriar. Espelha o sistema do iFood/Zoop. |
+| Automacao | **Python + boto3** | `aws_cost_report.py` agendado via Actions: relatorio diario de custo agrupado por tag e servico. |
+| Seguranca | IMDSv2, EBS encrypted, S3 bloqueado, SG least-privilege, OIDC trust por branch, **Trivy** em CVE de imagem e IaC, **gitleaks** em pre-commit | Cada controle existe para responder a um incidente real que vivi ou estudei (ver [docs/security-baseline.md](docs/security-baseline.md)). |
+| Disciplina | **pre-commit** com tflint, helmlint, yamllint, shellcheck, gitleaks | Pega bug antes do CI, evita gastar minuto de runner com erro de linter. |
+
+---
+
+## Subindo o ambiente do zero
+
+Pre-requisitos: AWS CLI configurado (`aws configure`), Terraform >= 1.5, Bash (Linux/macOS/WSL).
 
 ```bash
+# 1. Personalize seu inventory
 vi terraform/inventories/dev/terraform.tfvars
+#    project_name, owner, github_repository
+
+# 2. Provisione tudo (um comando faz S3+DynamoDB, depois VPC+EC2+IAM+Kind+ArgoCD)
+cd terraform && chmod +x setup.sh && ./setup.sh dev
+
+# 3. Configure os 4 GitHub Secrets que o setup.sh imprime no final
+#    (AWS_ROLE_ARN, EC2_INSTANCE_ID, EC2_SSH_HOST, EC2_SSH_PRIVATE_KEY)
+
+# 4. Trigger o pipeline (qualquer mudanca em charts/** ou terraform/**)
+git commit --allow-empty -m "chore: trigger pipeline" && git push origin main
 ```
 
-```hcl
-project_name       = "meu-projeto"         # Prefixo dos recursos
-owner              = "seu.nome"            # Tag Owner
-github_repository  = "seu-user/seu-repo"   # OIDC trust policy
-```
+O passo a passo completo, com troubleshooting, esta em **[docs/runbook-terraform-setup.md](docs/runbook-terraform-setup.md)**.
 
-### 2. Provisionar tudo
-
-```bash
-cd terraform
-chmod +x setup.sh
-./setup.sh dev
-```
-
-O script faz tudo automaticamente:
-- Gera `backend.hcl` com bucket S3 unico (inclui AWS Account ID)
-- Cria S3 + DynamoDB para state remoto
-- Provisiona VPC, EC2, Security Groups, IAM com OIDC
-- Exporta chave SSH para `terraform/ssh-key-dev.pem`
-
-Ao final exibe: IP da EC2, Role ARN, comando SSH e GitHub Secrets.
-
-### 3. Conectar na EC2
-
-```bash
-ssh -i ssh-key-dev.pem ubuntu@<IP_EXIBIDO>
-```
-
-Aguarde ~5-8 min para o bootstrap (Docker + Kind + kubectl + Helm).
-
-```bash
-cat /var/log/bootstrap-status    # SUCCESS = pronto
-kubectl get nodes                # Ready
-```
-
-### 4. Configurar GitHub Secrets
-
-Em **Settings > Secrets > Actions**, crie com os valores exibidos pelo setup.sh:
-
-| Secret | Valor |
-|--------|-------|
-| `AWS_ROLE_ARN` | ARN exibido pelo setup.sh |
-| `EC2_INSTANCE_ID` | Instance ID exibido pelo setup.sh |
-| `EC2_SSH_HOST` | IP exibido pelo setup.sh |
-| `EC2_SSH_PRIVATE_KEY` | Conteudo do arquivo `ssh-key-dev.pem` |
-
-### 5. Trigger do pipeline
-
-```bash
-git add .
-git commit -m "chore: trigger pipeline"
-git push origin main
-```
-
-O pipeline faz: Helm Lint → OIDC Auth → SSH → `helm upgrade --install` → Smoke Test.
-
-### 6. Validar deploy
-
-```bash
-# Na EC2
-kubectl get pods    # 1/1 Running
-helm list           # STATUS: deployed
-```
-
-### 7. Destruir recursos
-
-```bash
-chmod +x teardown.sh
-./teardown.sh dev
-```
+Para destruir tudo: `cd terraform && ./teardown.sh dev`.
 
 ---
 
-## Estrutura
+## Os dois caminhos de deploy (e por que ambos existem)
 
-```
+### Caminho A — Push (CI dispara)
+
+`.github/workflows/ci-deploy-k8s.yml` faz `helm upgrade --install --force --wait` via SSH na EC2. E o caminho que **prova que o pipeline funciona** e e o exigido na avaliacao do projeto. Cada commit em `main` que toque `charts/**` ou `terraform/**` triggera lint -> deploy -> smoke test.
+
+### Caminho B — Pull (ArgoCD reconcilia)
+
+`argocd/applications/webapp.yaml` contem um `Application` que aponta para `charts/webapp` neste mesmo repositorio. Com `automated.prune` e `selfHeal` ligados, o cluster sempre converge para o que esta no Git.
+
+Os dois caminhos coexistem de proposito: o caminho A e a ferramenta de ensino do "como funciona um pipeline imperativo" e o caminho B mostra para onde a industria caminhou. Em uma plataforma real, **eu manteria apenas o B** (push deveria virar pull) — a discussao completa esta em [docs/adr-001-decisoes-tecnicas.md](docs/adr-001-decisoes-tecnicas.md#decisao-2--ssh-vs-self-hosted-runner-vs-ssm).
+
+---
+
+## Documentacao — onde ler o que
+
+A pasta [docs/](docs/) e o coracao do projeto. Cada documento foi escrito para ser util quando voce esta com pressa (TL;DR no topo) e quando voce quer aprofundar (`Pontos importantes` ao longo do texto, com historias reais de bastidor).
+
+| Documento | Para que serve |
+|-----------|---------------|
+| **[Indice da documentacao](docs/README.md)** | Mapa de tudo que existe em docs/ |
+| [Arquitetura (diagramas Mermaid)](docs/architecture.md) | Visao geral, fluxo de deploy, modulos Terraform |
+| [Guia passo a passo](docs/GUIA-PASSO-A-PASSO.md) | Da clonagem ate a EC2 entregando trafego |
+| [Runbook — Terraform](docs/runbook-terraform-setup.md) | Como esta organizado o IaC e por que |
+| [Runbook — Helm chart](docs/runbook-helm-chart.md) | Decisoes do chart `webapp` e parametros |
+| [Runbook — CI/CD pipeline](docs/runbook-ci-cd-pipeline.md) | Como o GitHub Actions opera com OIDC e SSH |
+| [Runbook — ArgoCD](docs/runbook-argocd.md) | Instalacao, App-of-Apps e fluxo GitOps |
+| [Runbook — Observabilidade](docs/runbook-observability.md) | Prometheus + Grafana + Loki via ArgoCD |
+| [Runbook — Validacao de deploy](docs/runbook-validacao-deploy.md) | Checklist completo apos o deploy |
+| [Playbook — Resposta a incidentes](docs/playbook-incident-response.md) | Detectar -> mitigar -> resolver -> documentar |
+| [Playbook — Rollback](docs/playbook-rollback.md) | Helm, Terraform e pipeline |
+| [Playbook — Scaling & performance](docs/playbook-scaling-performance.md) | HPA, vertical scaling, diagnostico |
+| [Playbook — Disaster Recovery](docs/playbook-disaster-recovery.md) | 4 cenarios com RTO/RPO + plano de teste |
+| [ADR-001 — Decisoes tecnicas](docs/adr-001-decisoes-tecnicas.md) | Kind vs Minikube, OIDC vs Access Keys, etc. |
+| [Security Baseline](docs/security-baseline.md) | Controles de seguranca por camada |
+| [Links e referencias](docs/links-e-referencias.md) | Pagina curada de links que abro toda semana |
+
+---
+
+## Como esse projeto agrega (visao do CTO/Tech Lead)
+
+| Olhando como... | O que voce extrai daqui |
+|-----------------|-------------------------|
+| **CTO** | Demonstra raciocinio sobre custo (Free Tier), seguranca (IMDSv2, OIDC, NetworkPolicy), e disciplina de documentacao (ADR, runbooks, playbooks). |
+| **Gerente / Coordenador** | Mostra como o autor pensa entregabilidade (`setup.sh` em um comando), risco (rollback documentado em 3 camadas) e onboarding (cada decisao com `Por que essa?`). |
+| **Tech Lead** | Codigo modular Terraform com dependency injection, chart Helm seguindo as convencoes `app.kubernetes.io/*`, GitFlow no pipeline, GitOps com App-of-Apps. |
+| **Recrutador / Hiring Manager** | Prova pratica do que esta no curriculo: AWS multi-conta, OIDC, Kubernetes, Helm, ArgoCD, observabilidade (mencionada nos playbooks). |
+| **Banca de pos-graduacao** | Cobre o ciclo completo IaC -> Cluster -> CI/CD -> GitOps -> Seguranca, com bibliografia em [docs/links-e-referencias.md](docs/links-e-referencias.md). |
+
+---
+
+## Estrutura do repositorio
+
+```text
 .
-├── .github/workflows/ci-deploy-k8s.yml    # Pipeline CI/CD
-├── charts/webapp/                          # Helm Chart generico
-├── terraform/
-│   ├── setup.sh                           # Bootstrap automatizado
-│   ├── teardown.sh                        # Destruir recursos
-│   ├── inventories/dev/terraform.tfvars   # Variaveis (unico arquivo para editar)
-│   └── modules/                           # networking, compute, security, storage, iam
-└── docs/                                  # Runbooks, Playbooks, ADR
+├── .github/workflows/
+│   ├── ci-deploy-k8s.yml             # Pipeline CI/CD (lint + Trivy + deploy)
+│   ├── argocd-bootstrap.yml          # Aplica os manifestos ArgoCD (manual)
+│   └── cost-report.yml               # Relatorio diario de custo AWS via OIDC
+├── argocd/
+│   ├── projects/chris-platform.yaml      # AppProject que isola as apps deste lab
+│   ├── applications/
+│   │   ├── webapp.yaml                   # webapp via Helm (this repo)
+│   │   ├── kube-prometheus-stack.yaml    # Prometheus + Grafana + Alertmanager
+│   │   └── loki-stack.yaml               # Loki + Promtail (logs)
+│   ├── bootstrap.yaml                # App-of-Apps (raiz)
+│   └── install.sh                    # Instalador manual idempotente
+├── charts/webapp/                    # Chart Helm + Self-Healing CronJob
+├── scripts/
+│   ├── aws_cost_report.py            # Cost Explorer -> JSON via OIDC
+│   └── requirements.txt
+├── docs/                             # Runbooks, playbooks, ADR, baseline, arquitetura
+├── .pre-commit-config.yaml           # tflint, helmlint, gitleaks, yamllint, shellcheck
+└── terraform/
+    ├── setup.sh                      # Bootstrap completo em um comando
+    ├── teardown.sh                   # Destrutor com confirmacao explicita
+    ├── inventories/dev|homol|prod
+    └── modules/                      # networking | compute | security | storage | iam
 ```
 
 ---
 
-## Stack
+## Sobre o autor
 
-| Ferramenta | Funcao |
-|------------|--------|
-| **Terraform** | 5 modulos reusaveis, inventories por ambiente, Elastic IP, OIDC |
-| **Helm** | Chart generico `webapp` — qualquer imagem, resource limits, HPA, probes |
-| **Kind** | Cluster Kubernetes (Docker-based) na EC2 |
-| **GitHub Actions** | CI/CD com OIDC, GitFlow (main/develop/feature/release/hotfix) |
+**Christopher Amaral** — Engenheiro de infraestrutura (DevOps/SRE/PSE) com 6+ anos em ambientes de alta disponibilidade, com passagens por **Lojas Renner, iFood/Zoop, EDCS e Itau Latam**. Cursando Engenharia da Computacao (Impacta Tecnologia) e tecnico em Analise/Desenvolvimento, Eletrotecnica e Eletronica (ETEC).
 
----
+LinkedIn: [christopher-amaral](https://www.linkedin.com/in/christopher-amaral-6788b0359)
 
-## OIDC — Zero credenciais estaticas
-
-```
-GitHub Actions → JWT assinado → AWS STS → Credenciais temporarias (~1h)
-```
-
-O pipeline nao usa `AWS_ACCESS_KEY_ID`. Toda autenticacao e via OpenID Connect.
-
----
-
-## Evidencias
-
-### Validacao Helm Chart (Kind)
-
-![Validacao Helm Chart](docs/images/validacao-helm-chart.png)
-
-### Terraform
-
-![Terraform Validate](docs/images/terraform-validate.png)
-
-![Terraform Apply](docs/images/terraform-apply.png)
-
-### EC2 + Pipeline
-
-![Pod na EC2](docs/images/pod-ec2.png)
-
-![GitHub Actions](docs/images/github-actions.png)
-
----
-
-## Documentacao
-
-| Tipo | Documento |
-|------|-----------|
-| Runbook | [Terraform Setup](docs/runbook-terraform-setup.md) |
-| Runbook | [Helm Chart](docs/runbook-helm-chart.md) |
-| Runbook | [CI/CD Pipeline](docs/runbook-ci-cd-pipeline.md) |
-| Runbook | [Validacao de Deploy](docs/runbook-validacao-deploy.md) |
-| Playbook | [Incident Response](docs/playbook-incident-response.md) |
-| Playbook | [Rollback](docs/playbook-rollback.md) |
-| Playbook | [Scaling](docs/playbook-scaling-performance.md) |
-| ADR | [Decisoes Tecnicas](docs/adr-001-decisoes-tecnicas.md) |
-| Referencia | [Security Baseline](docs/security-baseline.md) |
-| Referencia | [Links](docs/links-e-referencias.md) |
-
----
-
-## Diferenciais
-
-| Camada | O que foi feito |
-|--------|----------------|
-| **Terraform** | 5 modulos, inventories (dev/homol/prod), setup.sh automatizado, bucket S3 com account ID |
-| **Helm** | Chart generico, NetworkPolicy, HPA, probes, values de producao, checksum annotation |
-| **CI/CD** | GitFlow, OIDC, concurrency control, path filter, smoke test |
-| **Seguranca** | IMDSv2, EBS encriptado, S3 bloqueado, SG least-privilege, zero static keys |
-
----
-
-**Autor**: Christopher Amaral | DevOps Engineer
-**Contato**: christopheramaral1996@gmail.com
-**LinkedIn**: [christopher-amaral](https://www.linkedin.com/in/christopher-amaral-6788b0359)
+> Esse projeto e mantido em horario de laboratorio pessoal. Se voce viu algo que pode melhorar, abra uma issue ou me chame no LinkedIn — feedback honesto e como eu evoluo o trabalho.

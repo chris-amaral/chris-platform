@@ -1,11 +1,13 @@
 #!/bin/bash
 ###############################################################################
 # bootstrap-cluster.sh
-# Description: Provisioning script for EC2 user-data.
-#              Installs Docker, Kind, kubectl and Helm.
-#              Creates a single-node Kind cluster ready for deployments.
-# Author: Christopher Amaral
-# Tested on: Ubuntu 22.04 LTS (amd64)
+# Provisionamento via user-data para EC2:
+#   - Docker, kubectl, Helm e Kind
+#   - Cluster Kind de no unico pronto para deploys
+#   - ArgoCD instalado e exposto via NodePort 30080
+#
+# Mantenedor: Christopher Amaral
+# Validado em: Ubuntu 22.04 LTS (amd64)
 ###############################################################################
 set -euxo pipefail
 
@@ -84,8 +86,13 @@ networking:
 nodes:
   - role: control-plane
     extraPortMappings:
+      # ArgoCD UI (NodePort)
       - containerPort: 30080
         hostPort: 30080
+        protocol: TCP
+      # Reservada para futura exposicao da aplicacao via Ingress/NodePort
+      - containerPort: 30090
+        hostPort: 30090
         protocol: TCP
 KINDCFG
 
@@ -106,6 +113,25 @@ su - ubuntu -c "kubectl wait --for=condition=Ready nodes --all --timeout=300s"
 log "Cluster status:"
 su - ubuntu -c "kubectl get nodes -o wide"
 su - ubuntu -c "kubectl get pods -A"
+
+# --- ArgoCD -----------------------------------------------------------------
+# GitOps controller. Roda no cluster e fica observando o Git.
+# Aqui a instalacao e feita "best effort": se algo falhar, o bootstrap continua
+# e a aplicacao webapp pode ser entregue via helm upgrade pelo CI.
+log "Installing ArgoCD..."
+ARGOCD_VERSION="v2.13.1"
+su - ubuntu -c "kubectl create namespace argocd" || true
+su - ubuntu -c "kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/${ARGOCD_VERSION}/manifests/install.yaml" || log "WARN: ArgoCD apply falhou — siga argocd/install.sh manualmente."
+
+# Patch do server para ServiceType NodePort na porta 30080 (ja mapeada pelo Kind)
+su - ubuntu -c "kubectl patch svc argocd-server -n argocd -p '{\"spec\": {\"type\": \"NodePort\", \"ports\": [{\"port\": 80, \"targetPort\": 8080, \"nodePort\": 30080, \"protocol\": \"TCP\", \"name\": \"http\"}]}}'" || true
+
+# Deixar o ArgoCD em modo insecure no Kind (HTTP via NodePort sem TLS pass-through)
+su - ubuntu -c "kubectl -n argocd patch configmap argocd-cmd-params-cm -p '{\"data\": {\"server.insecure\": \"true\"}}'" || true
+su - ubuntu -c "kubectl -n argocd rollout restart deployment argocd-server" || true
+
+log "ArgoCD instalado. Senha admin inicial:"
+su - ubuntu -c "kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' 2>/dev/null | base64 -d || echo '(ainda nao gerada)'"
 
 # --- Done -------------------------------------------------------------------
 echo "SUCCESS" > "$STATUS_FILE"

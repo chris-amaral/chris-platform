@@ -82,12 +82,12 @@ O bucket S3 tem versionamento habilitado. Se o state foi corrompido:
 ```bash
 # Listar versoes do state
 aws s3api list-object-versions \
-  --bucket projeto-christopher-tfstate \
+  --bucket chris-platform-tfstate-<account_id> \
   --prefix dev/terraform.tfstate
 
 # Restaurar versao anterior
 aws s3api get-object \
-  --bucket projeto-christopher-tfstate \
+  --bucket chris-platform-tfstate-<account_id> \
   --key dev/terraform.tfstate \
   --version-id <VERSION_ID> \
   terraform.tfstate.backup

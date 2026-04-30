@@ -1,0 +1,36 @@
+###############################################################################
+# AppProject: chris-platform
+# Agrupa as aplicacoes da plataforma pessoal de Christopher Amaral.
+# Restringe quais repos e namespaces de destino o ArgoCD pode usar.
+#
+# Mantenedor: Christopher Amaral
+###############################################################################
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: chris-platform
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  description: Aplicacoes da plataforma pessoal de Christopher Amaral
+  sourceRepos:
+    - https://github.com/chris-amaral/DevOps-CICD.git
+    - https://github.com/chris-amaral/DevOps-CICD
+    - https://prometheus-community.github.io/helm-charts
+    - https://grafana.github.io/helm-charts
+  destinations:
+    - namespace: default
+      server: https://kubernetes.default.svc
+    - namespace: webapp
+      server: https://kubernetes.default.svc
+    - namespace: monitoring
+      server: https://kubernetes.default.svc
+  clusterResourceWhitelist:
+    - group: "*"
+      kind: "*"
+  namespaceResourceWhitelist:
+    - group: "*"
+      kind: "*"
+  orphanedResources:
+    warn: true

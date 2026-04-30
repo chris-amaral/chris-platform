@@ -39,8 +39,9 @@ resources:
 
 # --- Custom HTML Message ----------------------------------------------------
 # Mensagem exibida no index.html do Nginx.
-# Pode ser sobrescrita via --set customMessage="..."
-customMessage: "Hello World da AsapTech"
+# Pode ser sobrescrita via --set customMessage="..." no helm upgrade.
+# Esta mensagem default e o texto que aparece se nada for passado pelo pipeline.
+customMessage: "chris-platform - DevOps CICD by Christopher Amaral"
 
 # --- ConfigMap (index.html) -------------------------------------------------
 # Desabilite se usar imagem que ja possui seu proprio conteúdo web.
@@ -76,6 +77,19 @@ autoscaling:
 # Quando habilitado, permite apenas ingress na porta do service.
 networkPolicy:
   enabled: false
+
+# --- Self-Healing -----------------------------------------------------------
+# CronJob que detecta pods em CrashLoopBackOff (ou com restartCount alto)
+# e os deleta para forcar recriacao pelo controller. Reproduz, em escala
+# de laboratorio, o sistema de Self-Healing que rodava no iFood/Zoop.
+#
+# Em producao, troque por um operator dedicado (kured, descheduler ou um
+# custom com kopf/operator-sdk). Aqui o CronJob basta para demonstrar.
+selfHealing:
+  enabled: false
+  schedule: "*/5 * * * *"          # a cada 5 min
+  maxRestartsBeforeAction: 3       # acima disso, deleta o pod
+  image: "bitnami/kubectl:1.30"
 
 # --- Pod Configuration ------------------------------------------------------
 nodeSelector: {}

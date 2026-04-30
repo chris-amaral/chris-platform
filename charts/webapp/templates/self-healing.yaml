@@ -1,0 +1,127 @@
+{{- if .Values.selfHealing.enabled }}
+###############################################################################
+# Self-Healing — CronJob + ServiceAccount + Role
+#
+# Roda em intervalo configuravel e reinicia pods do release que estejam em
+# CrashLoopBackOff. Reproduz, em escala de laboratorio, o sistema de
+# Self-Healing que entreguei no iFood/Zoop: deteccao automatica de
+# anomalia + acao de mitigacao + log estruturado para auditoria.
+#
+# Em producao, este controller seria substituido por um operator dedicado
+# (ex: kured, descheduler ou um custom operator com kopf/operator-sdk).
+###############################################################################
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "webapp.fullname" . }}-self-healing
+  labels:
+    {{- include "webapp.labels" . | nindent 4 }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "webapp.fullname" . }}-self-healing
+  labels:
+    {{- include "webapp.labels" . | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "delete"]
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "webapp.fullname" . }}-self-healing
+  labels:
+    {{- include "webapp.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "webapp.fullname" . }}-self-healing
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "webapp.fullname" . }}-self-healing
+    namespace: {{ .Release.Namespace }}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "webapp.fullname" . }}-self-healing
+  labels:
+    {{- include "webapp.labels" . | nindent 4 }}
+spec:
+  schedule: {{ .Values.selfHealing.schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        metadata:
+          labels:
+            {{- include "webapp.selectorLabels" . | nindent 12 }}
+            app.kubernetes.io/component: self-healing
+        spec:
+          serviceAccountName: {{ include "webapp.fullname" . }}-self-healing
+          restartPolicy: OnFailure
+          containers:
+            - name: self-healing
+              image: {{ .Values.selfHealing.image | quote }}
+              imagePullPolicy: IfNotPresent
+              env:
+                - name: NAMESPACE
+                  value: {{ .Release.Namespace | quote }}
+                - name: SELECTOR
+                  value: "app.kubernetes.io/instance={{ .Release.Name }}"
+                - name: MAX_RESTARTS
+                  value: {{ .Values.selfHealing.maxRestartsBeforeAction | quote }}
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -eu
+                  echo "[$(date -Iseconds)] self-healing iniciado"
+                  echo "namespace=$NAMESPACE selector=$SELECTOR threshold=$MAX_RESTARTS"
+
+                  PODS=$(kubectl get pod -n "$NAMESPACE" -l "$SELECTOR" \
+                    -o jsonpath='{range .items[*]}{.metadata.name}{"|"}{.status.containerStatuses[0].restartCount}{"|"}{.status.containerStatuses[0].state.waiting.reason}{"\n"}{end}' \
+                    || true)
+
+                  if [ -z "$PODS" ]; then
+                    echo "Nenhum pod encontrado para o selector. Encerrando OK."
+                    exit 0
+                  fi
+
+                  ACTION_COUNT=0
+                  echo "$PODS" | while IFS='|' read -r NAME RESTARTS REASON; do
+                    [ -z "$NAME" ] && continue
+                    RESTARTS=${RESTARTS:-0}
+                    REASON=${REASON:-Running}
+                    echo "pod=$NAME restarts=$RESTARTS reason=$REASON"
+                    if [ "$RESTARTS" -ge "$MAX_RESTARTS" ] || [ "$REASON" = "CrashLoopBackOff" ]; then
+                      echo "  -> deletando $NAME (controller recriara)"
+                      kubectl delete pod -n "$NAMESPACE" "$NAME" --grace-period=10 || true
+                      ACTION_COUNT=$((ACTION_COUNT + 1))
+                    fi
+                  done
+
+                  echo "[$(date -Iseconds)] self-healing finalizado"
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  cpu: 50m
+                  memory: 64Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                runAsNonRoot: true
+                runAsUser: 65534
+                capabilities:
+                  drop: ["ALL"]
+{{- end }}

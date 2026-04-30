@@ -27,7 +27,7 @@ kind create cluster --name teste --wait 3m
 
 # Deploy
 helm install webapp ./charts/webapp \
-  --set customMessage="Hello World da AsapTech - Teste local"
+  --set customMessage="chris-platform - DevOps CICD by Christopher Amaral - Teste local"
 
 # Verificacao
 kubectl get pods -l app.kubernetes.io/name=webapp    # 1/1 Running
@@ -36,7 +36,7 @@ helm list                                            # STATUS: deployed
 
 # Upgrade (simula CI/CD)
 helm upgrade webapp ./charts/webapp \
-  --set customMessage="Hello World da AsapTech - Deploy via CI/CD (Commit: abc1234)" \
+  --set customMessage="chris-platform - DevOps CICD by Christopher Amaral - Deploy via CI/CD (Commit: abc1234)" \
   --force --wait
 helm history webapp                                  # 2 revisoes
 
@@ -110,7 +110,7 @@ cd terraform
 
 # Gerar backend.hcl (substituir ACCOUNT_ID pelo seu)
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-sed "s/<account_id>/$ACCOUNT_ID/; s/<project_name>/projeto-teste/" \
+sed "s/<account_id>/$ACCOUNT_ID/; s/<project_name>/chris-platform/" \
   inventories/dev/backend.hcl.example > inventories/dev/backend.hcl
 
 # Bootstrap
@@ -154,7 +154,7 @@ kind get clusters                                     # dev-cluster
 
 # Deploy manual
 helm upgrade --install webapp /tmp/webapp-chart \
-  --set customMessage="Hello World da AsapTech - Deploy manual" \
+  --set customMessage="chris-platform - DevOps CICD by Christopher Amaral - Deploy manual" \
   --force --wait --timeout 120s
 
 # Verificacao

@@ -1,0 +1,37 @@
+###############################################################################
+# App-of-Apps: chris-platform-bootstrap
+# Aplicacao raiz que faz o ArgoCD gerenciar a si mesmo.
+# Apontando para argocd/, ele descobre o AppProject chris-platform e a
+# Application webapp, mantendo tudo sincronizado a partir de um unico
+# apply inicial.
+#
+# Comando para aplicar (uma unica vez, apos ArgoCD instalado):
+#   kubectl apply -f argocd/bootstrap.yaml
+#
+# Mantenedor: Christopher Amaral
+###############################################################################
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: chris-platform-bootstrap
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/chris-amaral/DevOps-CICD.git
+    targetRevision: main
+    path: argocd
+    directory:
+      recurse: true
+      include: '{projects/*.yaml,applications/*.yaml}'
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

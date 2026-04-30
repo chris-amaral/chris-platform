@@ -1,0 +1,74 @@
+###############################################################################
+# argocd-bootstrap.yml
+#
+# Workflow MANUAL para aplicar o App-of-Apps do ArgoCD na EC2.
+# Executar uma unica vez por ambiente, depois que o cluster Kind ja esta
+# rodando (bootstrap-cluster.sh terminou) e os GitHub Secrets do deploy
+# (EC2_SSH_HOST, EC2_SSH_PRIVATE_KEY, EC2_INSTANCE_ID, AWS_ROLE_ARN) ja
+# estao configurados.
+#
+# A ideia desse workflow e separar o "ato fundador" do GitOps (entregar
+# os manifestos ArgoCD ao cluster pela primeira vez) do deploy continuo
+# da aplicacao, que e feito pelo `ci-deploy-k8s.yml` ou pelo proprio
+# ArgoCD reconciliando o repositorio.
+#
+# Mantenedor: Christopher Amaral
+###############################################################################
+name: ArgoCD - Bootstrap (manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Ambiente alvo"
+        required: true
+        default: "dev"
+        type: choice
+        options: [dev, homol, prod]
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+
+jobs:
+  apply:
+    name: Aplicar manifestos ArgoCD na EC2
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: AWS OIDC Auth
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.EC2_SSH_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || true
+
+      - name: Copiar manifestos para a EC2
+        run: |
+          scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -r \
+            argocd ubuntu@${{ secrets.EC2_SSH_HOST }}:/tmp/argocd
+
+      - name: Aplicar AppProject + Applications
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+            ubuntu@${{ secrets.EC2_SSH_HOST }} << 'EOF'
+          set -e
+          kubectl -n argocd wait --for=condition=available deployment --all --timeout=5m
+          kubectl apply -f /tmp/argocd/projects/chris-platform.yaml
+          kubectl apply -f /tmp/argocd/applications/webapp.yaml
+          echo ""
+          echo "=== ArgoCD Applications ==="
+          kubectl -n argocd get applications.argoproj.io -o wide
+          rm -rf /tmp/argocd
+          EOF

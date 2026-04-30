@@ -1,16 +1,22 @@
 #!/bin/bash
 ###############################################################################
-# setup.sh - Bootstrap completo do Terraform
+# setup.sh — bootstrap completo do projeto chris-platform.
+#
 # Uso: ./setup.sh [dev|homol|prod]
 #
-# Este script:
-#   1. Gera o backend.hcl com nome do bucket unico (inclui AWS account ID)
-#   2. Cria S3 + DynamoDB para state remoto
-#   3. Migra o state para S3
-#   4. Provisiona toda a infraestrutura
-#   5. Exporta a chave SSH para arquivo
+# O que esse script automatiza para nao quebrar a "primeira execucao":
+#   1. Le o tfvars do ambiente e gera o backend.hcl com bucket unico (inclui
+#      o AWS account ID, evitando colisao de nome global no S3)
+#   2. Cria o S3 + DynamoDB com backend local (resolve o "ovo e galinha" do
+#      remote state — voce precisa do bucket para guardar o state que cria
+#      o bucket)
+#   3. Migra o state para o S3
+#   4. Provisiona toda a infraestrutura (VPC, EC2 com Kind + ArgoCD, IAM
+#      com OIDC para GitHub, etc.)
+#   5. Exporta a chave SSH gerada para um arquivo local 600 e mostra os
+#      Secrets que voce precisa setar no GitHub para o pipeline rodar.
 #
-# Author: Christopher Amaral
+# Mantenedor: Christopher Amaral
 ###############################################################################
 set -e
 
@@ -22,6 +28,9 @@ if [ ! -f "$TFVARS" ]; then
   echo "Uso: ./setup.sh [dev|homol|prod]"
   exit 1
 fi
+
+# Limpa cache anterior do Terraform para evitar conflito de provider/backend
+rm -rf .terraform .terraform.lock.hcl 2>/dev/null || true
 
 echo "============================================"
 echo " Terraform Setup - Ambiente: ${ENV}"
@@ -142,9 +151,13 @@ echo ""
 echo " GitHub Secrets necessarios:"
 echo "   AWS_ROLE_ARN          = $ROLE_ARN"
 echo "   EC2_INSTANCE_ID       = $INSTANCE_ID"
-echo "   EC2_SSH_HOST           = $EC2_IP"
-echo "   EC2_SSH_PRIVATE_KEY    = (conteudo do arquivo $SSH_KEY_FILE)"
+echo "   EC2_SSH_HOST          = $EC2_IP"
+echo "   EC2_SSH_PRIVATE_KEY   = (conteudo do arquivo $SSH_KEY_FILE)"
 echo ""
 echo " Aguarde ~5-8 minutos para o bootstrap da EC2 completar."
-echo " Verifique com: ssh -i terraform/$SSH_KEY_FILE ubuntu@$EC2_IP 'cat /var/log/bootstrap-status'"
+echo " Verifique com: ssh -i $SSH_KEY_FILE ubuntu@$EC2_IP 'cat /var/log/bootstrap-status'"
+echo ""
+echo " Apos o bootstrap, ArgoCD UI estara disponivel em:"
+echo "   http://$EC2_IP:30080  (usuario admin)"
+echo "   senha inicial: ssh ... 'kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath={.data.password} | base64 -d'"
 echo "============================================"

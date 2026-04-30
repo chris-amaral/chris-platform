@@ -1,14 +1,14 @@
 # Security Baseline
 
-> Ultima atualizacao: 2026-04 | Autor: Christopher Amaral
+> Ultima atualizacao: 2026-04 | Mantenedor: Christopher Amaral
 
 ---
 
 ## TL;DR
 
-Documento de referencia com todos os controles de seguranca implementados no projeto, organizados por camada. Serve como checklist para auditorias, onboarding e revisao de seguranca.
+Documento de referencia com todos os controles de seguranca implementados na chris-platform, organizados por camada (AWS, Kubernetes/Helm, CI/CD, Repositorio). Serve como checklist para auditorias, onboarding de novos engenheiros e revisao de seguranca antes de evoluir o projeto.
 
-> **Ponto importante**: Em todo projeto que trabalhei ao longo da carreira, o security baseline era o primeiro documento criado e o ultimo revisado antes de ir para produção. Ele responde a pergunta: "O que estamos fazendo para proteger esse ambiente?". Mesmo em dev, a resposta não pode ser "nada".
+> **Ponto importante**: Em todo projeto que trabalhei ao longo da carreira, o security baseline era o primeiro documento criado e o ultimo revisado antes de ir para produção. Ele responde a pergunta: "O que estamos fazendo para proteger esse ambiente?". Mesmo em dev pessoal — como esse — a resposta nao pode ser "nada", porque os habitos que voce constroi em laboratorio sao os que sobem para produção depois.
 
 ---
 
@@ -92,7 +92,7 @@ Documento de referencia com todos os controles de seguranca implementados no pro
 | Media | Falco | Runtime security K8s | Media | Sprint 3 |
 | Baixa | VPN/Bastion para SSH | Elimina IP publico | Alta | Sprint 4 |
 | Baixa | HashiCorp Vault | Secrets management centralizado | Alta | Sprint 5 |
-| Media | ArgoCD (GitOps) | Deploy auditavel, pull-based, sem SSH | Media | Sprint 3 |
+| ~~Media~~ | ~~ArgoCD (GitOps)~~ — **implementado** | Deploy auditavel, pull-based, sem SSH | Media | **OK — ver [runbook-argocd.md](runbook-argocd.md)** |
 
 > **Ponto importante**: Se eu tivesse que priorizar uma unica melhoria, seria Trivy scan. E trivial de implementar (3 linhas no workflow) e pega vulnerabilidades criticas nas imagens base. Nas equipes que trabalhei, TODA imagem passa por scan antes de ir para produção. Uma imagem com CVE critica e barrada automaticamente.
 

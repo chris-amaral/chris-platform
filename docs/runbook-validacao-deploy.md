@@ -25,7 +25,7 @@ Checklist completo para validar que a infraestrutura foi provisionada, o cluster
 ### 1. Conectar na EC2
 
 ```bash
-ssh -i ~/.ssh/projeto-christopher-key ubuntu@<EC2_PUBLIC_IP>
+ssh -i ssh-key-dev.pem ubuntu@<EC2_PUBLIC_IP>
 ```
 
 ### 2. Validar provisionamento (bootstrap)

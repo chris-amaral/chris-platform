@@ -1,0 +1,53 @@
+###############################################################################
+# Application: webapp
+# Faz o ArgoCD observar charts/webapp neste mesmo repositorio e sincronizar
+# o release no namespace `default` do cluster Kind.
+#
+# A escolha por automated.prune + selfHeal e proposital: em laboratorio quero
+# que o cluster sempre reflita o que esta no Git, mesmo que alguem faca um
+# kubectl edit manual durante um teste.
+#
+# Mantenedor: Christopher Amaral
+###############################################################################
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: webapp
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  labels:
+    app.kubernetes.io/part-of: chris-platform
+    app.kubernetes.io/managed-by: argocd
+spec:
+  project: chris-platform
+  source:
+    repoURL: https://github.com/chris-amaral/DevOps-CICD.git
+    targetRevision: main
+    path: charts/webapp
+    helm:
+      releaseName: webapp
+      valueFiles:
+        - values.yaml
+      parameters:
+        - name: customMessage
+          value: "chris-platform - sync via ArgoCD por Christopher Amaral"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - PrunePropagationPolicy=foreground
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 3m
+  revisionHistoryLimit: 10

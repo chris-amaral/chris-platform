@@ -25,6 +25,11 @@ autoscaling:
 networkPolicy:
   enabled: true
 
+selfHealing:
+  enabled: true
+  schedule: "*/2 * * * *"
+  maxRestartsBeforeAction: 5
+
 probes:
   liveness:
     enabled: true

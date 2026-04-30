@@ -49,7 +49,7 @@ helm install webapp ./charts/webapp
 
 # Instalar com mensagem customizada
 helm install webapp ./charts/webapp \
-  --set customMessage="Hello World da AsapTech"
+  --set customMessage="chris-platform - DevOps CICD by Christopher Amaral"
 
 # Upgrade (atualizar mensagem)
 helm upgrade webapp ./charts/webapp \
@@ -106,7 +106,7 @@ helm install meu-app ./charts/webapp \
 | `service.type` | Tipo do Service | `ClusterIP` | `ClusterIP` |
 | `service.port` | Porta do Service | `80` | `80` |
 | `service.targetPort` | Porta do container | `80` | `80` |
-| `customMessage` | Mensagem no index.html | `Hello World da AsapTech` | - |
+| `customMessage` | Mensagem no index.html | `chris-platform - DevOps CICD by Christopher Amaral` | - |
 | `configMap.enabled` | Montar HTML customizado | `true` | `true` |
 | `resources.requests.cpu` | Request de CPU | `50m` | `250m` |
 | `resources.limits.cpu` | Limite de CPU | `100m` | `500m` |

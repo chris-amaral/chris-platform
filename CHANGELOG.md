@@ -6,6 +6,94 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
 ---
 
+## [1.4.0] - 2026-04-30
+
+### Adicionado
+
+**Seguranca**
+
+- `security-scan` job no `ci-deploy-k8s.yml` com Trivy (imagem + IaC), output SARIF publicado em GitHub Security
+- `.pre-commit-config.yaml` com terraform_fmt/validate/tflint, helmlint, yamllint, shellcheck, gitleaks e checks de higiene de repo
+
+**Self-Healing**
+
+- Novo template `charts/webapp/templates/self-healing.yaml`: CronJob + ServiceAccount + Role com permissoes minimas
+- Detecta pods em CrashLoopBackOff (ou com restartCount acima de threshold) e os deleta para forcar recriacao
+- Configuravel via `selfHealing.*` no values; ligado por default em `values-production.yaml`
+
+**Observabilidade**
+
+- `argocd/applications/kube-prometheus-stack.yaml` — Prometheus + Grafana + Alertmanager via Helm chart oficial, NodePort 30090
+- `argocd/applications/loki-stack.yaml` — Loki + Promtail no mesmo namespace `monitoring`
+- AppProject `chris-platform` ampliado com novos sourceRepos (prometheus-community, grafana) e namespace `monitoring`
+- `docs/runbook-observability.md` com TL;DR, dashboards uteis, alerta de exemplo, custos e troubleshooting
+
+**Automacao Python**
+
+- `scripts/aws_cost_report.py` — consulta Cost Explorer, agrupa por Service e tag Project, devolve resumo + JSON
+- `.github/workflows/cost-report.yml` — agenda diaria 09:00 UTC + workflow_dispatch, autenticado via OIDC, publica JSON como artifact
+
+**Disaster Recovery**
+
+- `docs/playbook-disaster-recovery.md` com 4 cenarios (state, cluster, SSH, conta inteira) com RTO/RPO e plano de teste regular
+
+**Arquitetura visual**
+
+- `docs/architecture.md` com 4 diagramas Mermaid (visao geral, fluxo push vs pull, dependency injection Terraform, estados do pod)
+
+### Alterado
+
+- README principal: tabela "Stack" expandida com observabilidade, Self-Healing, automacao Python e disciplina (pre-commit)
+- Estrutura do repositorio no README atualizada com `scripts/`, novas Applications ArgoCD e workflows
+- `docs/README.md` indice atualizado com Arquitetura, Observabilidade e Disaster Recovery
+- AppProject `chris-platform`: `clusterResourceWhitelist` ampliado para suportar instalacoes Helm que criam ClusterRoles
+
+### Identidade do projeto
+
+- Historico Git reescrito (filter-branch): todos os 21 commits passados re-autorados como `chris-amaral <chris-amaral@users.noreply.github.com>`
+- Git config local apontando para a mesma identidade — novos commits saem como chris-amaral
+
+---
+
+## [1.3.0] - 2026-04-30
+
+### Adicionado
+
+**GitOps com ArgoCD**
+
+- Pasta `argocd/` com AppProject `chris-platform`, Application `webapp` e App-of-Apps raiz
+- `argocd/install.sh` idempotente para reinstalacao manual
+- Bootstrap automatico do ArgoCD no `bootstrap-cluster.sh` (user-data da EC2)
+- ArgoCD UI exposta via NodePort 30080, modo `server.insecure` para HTTP no Kind
+- Workflow `argocd-bootstrap.yml` (manual) que aplica os manifestos via OIDC + SSH
+- Novo runbook `docs/runbook-argocd.md` com troubleshooting e roadmap GitOps
+- Novo indice `docs/README.md` mapeando toda a documentacao tecnica
+
+### Alterado
+
+- Projeto renomeado de `projeto-teste` para `chris-platform` em todos os inventories
+- Squad renomeada para `christopher-amaral`
+- README principal reescrito com tom pessoal/profissional, referenciando `docs/`
+- `customMessage` default atualizado para identificar o autor e o projeto
+- `setup.sh` agora limpa `.terraform/` antes de iniciar (evita conflito de provider)
+- `.gitignore` reforcado: `*.pem`, `ssh-key-*.pem` e `.terraform.lock.hcl` ignorados
+
+### Removido
+
+- `terraform/ssh-key-dev.pem` (chave SSH commitada por engano em runs anteriores)
+- `Teste Tecnico - Helm _ Terraform.pdf` (artefato fora do escopo do laboratorio)
+- `terraform/dev.tfplan`, `terraform/terraform.tfstate*` (state nao deve ser versionado)
+- Pasta vazia `chris-amaral/`
+- Todas as referencias literais a "AsapTech" em codigo, workflows e documentos
+- Todos os enderecos de e-mail dos cabecalhos de arquivos e do README (contato unico via LinkedIn)
+
+### Seguranca
+
+- Chave SSH removida do historico de trabalho atual (recomendado rotacionar via setup.sh)
+- ArgoCD habilita evolucao para deploys 100% pull-based, eliminando SSH no pipeline
+
+---
+
 ## [1.2.0] - 2026-04
 
 ### Adicionado

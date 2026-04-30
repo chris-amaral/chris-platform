@@ -162,9 +162,9 @@ chmod 600 ssh-key-dev.pem
 | Variavel | Descricao | Dev | Homol | Prod |
 |----------|-----------|-----|-------|------|
 | `aws_region` | Regiao AWS | us-east-1 | us-east-1 | us-east-1 |
-| `project_name` | Prefixo dos recursos | projeto-teste | projeto-teste | projeto-teste |
+| `project_name` | Prefixo dos recursos | chris-platform | chris-platform | chris-platform |
 | `environment` | Ambiente | dev | homol | prod |
-| `squad` | Squad responsavel | projeto-teste | projeto-teste | projeto-teste |
+| `squad` | Squad responsavel | christopher-amaral | christopher-amaral | christopher-amaral |
 | `owner` | Responsavel (tag) | christopher.amaral | christopher.amaral | christopher.amaral |
 | `instance_type` | Tipo EC2 | m7i-flex.large | m7i-flex.large | m7i-flex.xlarge |
 | `vpc_cidr` | CIDR da VPC | 10.10.0.0/16 | 10.20.0.0/16 | 10.30.0.0/16 |

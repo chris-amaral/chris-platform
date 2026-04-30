@@ -1,0 +1,101 @@
+###############################################################################
+# Application: kube-prometheus-stack
+#
+# Stack completa de metricas (Prometheus + Alertmanager + Grafana + node
+# exporters + kube-state-metrics) instalada no namespace `monitoring`
+# via Helm chart oficial.
+#
+# Para o Kind do laboratorio, fica desabilitado por default no chart.
+# Habilite ajustando `syncPolicy.automated` ou criando manualmente.
+# A imagem da stack consome ~700MB-1GB no cluster, entao so vale ligar
+# em maquinas com >=8GB RAM.
+#
+# Mantenedor: chris-amaral
+###############################################################################
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kube-prometheus-stack
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  labels:
+    app.kubernetes.io/part-of: chris-platform
+    app.kubernetes.io/component: observability
+spec:
+  project: chris-platform
+  source:
+    repoURL: https://prometheus-community.github.io/helm-charts
+    chart: kube-prometheus-stack
+    targetRevision: 65.5.1
+    helm:
+      releaseName: kube-prometheus-stack
+      values: |
+        # Reduzido para Kind no laboratorio. Em producao, manter defaults.
+        prometheus:
+          prometheusSpec:
+            retention: 7d
+            resources:
+              requests:
+                cpu: 100m
+                memory: 256Mi
+              limits:
+                cpu: 500m
+                memory: 1Gi
+            storageSpec:
+              volumeClaimTemplate:
+                spec:
+                  accessModes: ["ReadWriteOnce"]
+                  resources:
+                    requests:
+                      storage: 5Gi
+        grafana:
+          adminPassword: ""   # ArgoCD vai gerar e popular um Secret na primeira sync
+          defaultDashboardsEnabled: true
+          service:
+            type: NodePort
+            nodePort: 30090
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+        alertmanager:
+          alertmanagerSpec:
+            resources:
+              requests:
+                cpu: 25m
+                memory: 64Mi
+              limits:
+                cpu: 100m
+                memory: 128Mi
+        # Defaults pesados desligados para Kind
+        kubeApiServer:
+          enabled: false
+        kubeControllerManager:
+          enabled: false
+        kubeScheduler:
+          enabled: false
+        kubeProxy:
+          enabled: false
+        kubeEtcd:
+          enabled: false
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 30s
+        factor: 2
+        maxDuration: 5m
+  revisionHistoryLimit: 5

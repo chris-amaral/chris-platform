@@ -1,6 +1,6 @@
 # ==============================================================================
-# .gitignore - projeto-christopher
-# Author: Christopher Amaral
+# .gitignore — chris-platform
+# Mantenedor: Christopher Amaral
 # ==============================================================================
 
 # --- Terraform ---------------------------------------------------------------
@@ -8,6 +8,7 @@
 *.tfstate
 *.tfstate.*
 *.tfplan
+.terraform.lock.hcl
 crash.log
 override.tf
 override.tf.json
@@ -17,11 +18,13 @@ override.tf.json
 terraform.rc
 terraform/**/backend.hcl
 
-# --- SSH Keys ----------------------------------------------------------------
+# --- Chaves e segredos -------------------------------------------------------
 *.key
+*.pem
 id_ed25519
 id_rsa
 !*.pub
+ssh-key-*.pem
 
 # --- OS ----------------------------------------------------------------------
 .DS_Store
@@ -48,5 +51,6 @@ charts/*/charts/
 *.pdf
 *.zip
 
-# --- AWS CLI local install (não faz parte do projeto) -----------------------
+# --- AWS CLI local (fora do escopo do projeto) ------------------------------
 aws/
+

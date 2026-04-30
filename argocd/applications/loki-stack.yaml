@@ -1,0 +1,69 @@
+###############################################################################
+# Application: loki-stack
+#
+# Loki (logs centralizados) + Promtail (agente que coleta logs dos pods
+# e envia para o Loki). Instalado no mesmo namespace `monitoring` para
+# o Grafana enxergar como datasource adicional.
+#
+# Equivale ao stack Graylog que entreguei na EDCS, mas mais leve para
+# laboratorio. Em producao, escolha-se entre Loki, Graylog ou ELK conforme
+# volume de log e perfil de query.
+#
+# Mantenedor: chris-amaral
+###############################################################################
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: loki-stack
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  labels:
+    app.kubernetes.io/part-of: chris-platform
+    app.kubernetes.io/component: observability
+spec:
+  project: chris-platform
+  source:
+    repoURL: https://grafana.github.io/helm-charts
+    chart: loki-stack
+    targetRevision: 2.10.2
+    helm:
+      releaseName: loki-stack
+      values: |
+        loki:
+          enabled: true
+          isDefault: true
+          persistence:
+            enabled: true
+            size: 5Gi
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 200m
+              memory: 512Mi
+        promtail:
+          enabled: true
+          resources:
+            requests:
+              cpu: 20m
+              memory: 64Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
+        grafana:
+          enabled: false   # ja vem do kube-prometheus-stack
+        prometheus:
+          enabled: false
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+  revisionHistoryLimit: 5
