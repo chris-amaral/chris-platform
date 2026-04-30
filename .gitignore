@@ -54,3 +54,4 @@ charts/*/charts/
 # --- AWS CLI local (fora do escopo do projeto) ------------------------------
 aws/
 
+__pycache__/
