@@ -8,8 +8,6 @@ Trabalho com infraestrutura desde 2017 em ambientes diversos: grande varejista n
 
 Esse projeto e a versao "publicavel" do que vejo no dia a dia: um cluster Kubernetes provisionado por Terraform, um chart Helm generico que serve para 80% dos casos, um pipeline CI/CD de GitHub Actions com OIDC (zero credencial estatica) e — para fechar o ciclo — **ArgoCD** entregando GitOps de verdade. Tudo escrito do jeito que eu gostaria de encontrar quando entro em uma squad nova: simples de subir, simples de derrubar, com runbooks honestos para quando algo quebrar.
 
-Se voce for CTO, gerente, tech lead ou apenas curioso, toda a documentacao detalhada esta em **[docs/](docs/)** — comece por **[docs/README.md](docs/README.md)** que serve de mapa.
-
 ---
 
 ## O que essa plataforma faz, em uma frase
@@ -155,5 +153,3 @@ A pasta [docs/](docs/) e o coracao do projeto. Cada documento foi escrito para s
 **Christopher Amaral** — Engenheiro de infraestrutura (DevOps/SRE/PSE) com 6+ anos em ambientes de alta disponibilidade. Passou por uma grande operacao de varejo brasileiro, fintech de meios de pagamento em marketplace de delivery, integradora/consultoria de TI e banco de varejo com grande escalabilidade na America Latina. Atuou em iniciativas de orquestracao com **Apache Airflow** (DAGs operacionais para ETL/automacao recorrente) e em projetos de **IA aplicada a operacao** (deteccao de anomalia em log, classificacao de incidente, ChatOps). Cursando Engenharia da Computacao e tecnico em Analise/Desenvolvimento, Eletrotecnica e Eletronica.
 
 LinkedIn: [christopher-amaral](https://www.linkedin.com/in/christopher-amaral-6788b0359)
-
-> Esse projeto e mantido em horario de laboratorio pessoal. Se voce viu algo que pode melhorar, abra uma issue ou me chame no LinkedIn — feedback honesto e como eu evoluo o trabalho.
