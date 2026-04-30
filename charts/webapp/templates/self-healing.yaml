@@ -4,7 +4,7 @@
 #
 # Roda em intervalo configuravel e reinicia pods do release que estejam em
 # CrashLoopBackOff. Reproduz, em escala de laboratorio, o sistema de
-# Self-Healing que entreguei no iFood/Zoop: deteccao automatica de
+# Self-Healing que entreguei em fintech de meios de pagamento: deteccao automatica de
 # anomalia + acao de mitigacao + log estruturado para auditoria.
 #
 # Em producao, este controller seria substituido por um operator dedicado

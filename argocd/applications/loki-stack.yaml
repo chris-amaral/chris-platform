@@ -5,7 +5,8 @@
 # e envia para o Loki). Instalado no mesmo namespace `monitoring` para
 # o Grafana enxergar como datasource adicional.
 #
-# Equivale ao stack Graylog que entreguei na EDCS, mas mais leve para
+# Equivale ao stack Graylog que entreguei em integradora/consultoria
+# de TI, mas mais leve para
 # laboratorio. Em producao, escolha-se entre Loki, Graylog ou ELK conforme
 # volume de log e perfil de query.
 #

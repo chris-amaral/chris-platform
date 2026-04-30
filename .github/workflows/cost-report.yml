@@ -6,7 +6,8 @@
 # tag Project e publica o JSON como artifact da execucao.
 #
 # Reproduz, em escala de laboratorio, o tipo de automacao operacional em
-# Python que rodava nas pipelines da equipe que atuei (Itau Latam):
+# Python que rodava nas pipelines da equipe em que atuei (banco de varejo
+# com grande escalabilidade na America Latina):
 # scripts curtos, agendados, autenticados via OIDC, com saida estruturada
 # que outros sistemas conseguem consumir.
 #

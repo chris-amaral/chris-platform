@@ -6,6 +6,24 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
 ---
 
+## [1.4.1] - 2026-04-30
+
+### Alterado
+
+**Documentacao — anonimizacao de empresas**
+
+- Todas as mencoes a empresas anteriores (varejista, fintech de pagamento de delivery, consultoria de TI, banco da America Latina) substituidas por descricoes genericas do segmento, em todos os arquivos do repo (README, architecture, runbooks, charts, workflows e manifests). Mantem o storytelling tecnico sem expor nomes
+- Continua mantida a referencia historica no proprio CHANGELOG (entry da v1.3.0) como registro do trabalho de cleanup
+
+**Documentacao — Airflow + IA**
+
+- README: secao "Sobre o autor" agora menciona iniciativas com Apache Airflow (DAGs operacionais) e IA aplicada a operacao (deteccao de anomalia, classificacao de incidente, ChatOps)
+- README: tabela "Stack" recebeu duas linhas novas como roadmap — `Apache Airflow` e `LLM em pipeline`
+- `docs/architecture.md`: tabela "Onde isto se conecta com o CV" recebeu Airflow e IA como blocos do roadmap
+- `docs/runbook-observability.md`: roadmap ampliado com 3 itens novos — Airflow ao lado da stack, IA aplicada a observabilidade (classificador LLM de causa raiz) e ChatOps
+
+---
+
 ## [1.4.0] - 2026-04-30
 
 ### Adicionado

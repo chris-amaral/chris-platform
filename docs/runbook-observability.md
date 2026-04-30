@@ -8,7 +8,7 @@
 
 A pasta [`argocd/applications/`](../argocd/applications/) contem duas Applications: `kube-prometheus-stack` (metricas + alertas + dashboards) e `loki-stack` (logs centralizados). As duas instalam no namespace `monitoring`, ficam expostas atraves do Grafana em `:30090` (NodePort) e sao ligaveis sob demanda — porque consomem ~1GB no Kind do laboratorio.
 
-Reproduz, em escala de bancada, o stack de observabilidade que entreguei na EDCS (Graylog) e que mantive em fintechs (Datadog/Prometheus/Loki).
+Reproduz, em escala de bancada, stacks de observabilidade que entreguei em uma integradora/consultoria de TI (Graylog) e que mantive em fintech de meios de pagamento (Datadog/Prometheus/Loki).
 
 ---
 
@@ -145,6 +145,9 @@ Em ambiente de laboratorio (m7i-flex.large, 8GB RAM):
 - [ ] Tempo (tracing distribuido) — fechar a tripla metrics + logs + traces
 - [ ] Recording rules para queries custosas
 - [ ] kube-prometheus-stack com remote_write para Mimir/Thanos quando o lab evoluir
+- [ ] **Apache Airflow** ao lado da stack: DAGs operacionais (snapshot diario do estado do cluster, scan de drift Terraform, geracao de relatorios de SLO). Em projetos anteriores, o Airflow era o "orquestrador de tarefas chatas" que liberava o time para tocar o que importa.
+- [ ] **IA aplicada a observabilidade**: classificador LLM que recebe o log da janela do alerta + o YAML do recurso e devolve hipotese de causa raiz no canal de plantao. Tema que toquei em equipes de plataforma — combina logs estruturados + RAG no runbook + LLM para sumarizar.
+- [ ] **ChatOps com LLM**: bot que aceita "qual o status da webapp?" e retorna `kubectl describe + helm history + ultimas linhas do log` ja resumidas em portugues.
 
 ---
 

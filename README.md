@@ -1,12 +1,10 @@
 # chris-platform — DevOps & GitOps na AWS
 
-> Laboratorio pessoal de Christopher Amaral para exercitar, na pratica, o que vivi nos ultimos seis anos como engenheiro de infraestrutura: provisionamento como codigo, pipelines confiaveis e GitOps de verdade. Aqui o objetivo nao e ostentar uma stack — e mostrar **como eu penso** quando coloco uma plataforma no ar.
-
 ---
 
 ## Por que esse repositorio existe
 
-Trabalho com infraestrutura desde 2017 (Lojas Renner, iFood/Zoop, EDCS, Itau Latam) e ja entreguei plataformas de pagamento com milhares de microservicos, pipelines de CI/CD do zero e observabilidade centralizada. Mas todo profissional de SRE sabe: o curriculo conta a historia, **o repositorio prova a historia**.
+Trabalho com infraestrutura desde 2017 em ambientes diversos: grande varejista nacional, fintech de meios de pagamento em marketplace de delivery, integradora/consultoria de TI e banco de varejo com grande escalabilidade na America Latina. Ja entreguei plataformas de pagamento com milhares de microservicos, pipelines de CI/CD do zero, observabilidade centralizada, automacao com Apache Airflow para orquestracao de jobs operacionais e iniciativas de IA aplicadas a operacao (ChatOps, deteccao de anomalia em log e classificacao de incidentes). Mas todo profissional de SRE sabe: o curriculo conta a historia, **Segue meu projeto pessoal**.
 
 Esse projeto e a versao "publicavel" do que vejo no dia a dia: um cluster Kubernetes provisionado por Terraform, um chart Helm generico que serve para 80% dos casos, um pipeline CI/CD de GitHub Actions com OIDC (zero credencial estatica) e — para fechar o ciclo — **ArgoCD** entregando GitOps de verdade. Tudo escrito do jeito que eu gostaria de encontrar quando entro em uma squad nova: simples de subir, simples de derrubar, com runbooks honestos para quando algo quebrar.
 
@@ -46,8 +44,10 @@ Provisiona uma EC2 na AWS, sobe um cluster Kubernetes (Kind), instala ArgoCD e e
 | CI/CD push | **GitHub Actions + OIDC** | Lint estrito + Trivy scan + deploy via SSH com OIDC AssumeRole. Zero `AWS_ACCESS_KEY_ID` em qualquer lugar. |
 | CI/CD pull | **ArgoCD (App-of-Apps)** | GitOps real: cluster reconcilia o estado a partir do Git, com `prune` e `selfHeal` ligados. |
 | Observabilidade | **Prometheus + Grafana + Loki** | Stack completa via ArgoCD App. Metricas, alertas, dashboards e logs centralizados — desligavel para Kind pequeno. |
-| Self-Healing | **CronJob no chart** | Detecta CrashLoopBackOff e deleta o pod para o ReplicaSet recriar. Espelha o sistema do iFood/Zoop. |
+| Self-Healing | **CronJob no chart** | Detecta CrashLoopBackOff e deleta o pod para o ReplicaSet recriar. Espelha um sistema de auto-cura que entreguei numa fintech de meios de pagamento. |
 | Automacao | **Python + boto3** | `aws_cost_report.py` agendado via Actions: relatorio diario de custo agrupado por tag e servico. |
+| Orquestracao (roadmap) | **Apache Airflow** | DAG planejada para encadear o cost report + scan de drift Terraform + checagem de saude do cluster + envio para Slack. Espelha automacoes que entreguei em banco de varejo. |
+| IA aplicada (roadmap) | **LLM em pipeline** | Iniciativas planejadas: classificador de severidade de log via LLM, ChatOps para `kubectl describe` em linguagem natural, sumarizacao automatica de PR/incidente. Tema que ja toquei em equipes anteriores. |
 | Seguranca | IMDSv2, EBS encrypted, S3 bloqueado, SG least-privilege, OIDC trust por branch, **Trivy** em CVE de imagem e IaC, **gitleaks** em pre-commit | Cada controle existe para responder a um incidente real que vivi ou estudei (ver [docs/security-baseline.md](docs/security-baseline.md)). |
 | Disciplina | **pre-commit** com tflint, helmlint, yamllint, shellcheck, gitleaks | Pega bug antes do CI, evita gastar minuto de runner com erro de linter. |
 
@@ -117,16 +117,6 @@ A pasta [docs/](docs/) e o coracao do projeto. Cada documento foi escrito para s
 
 ---
 
-## Como esse projeto agrega (visao do CTO/Tech Lead)
-
-| Olhando como... | O que voce extrai daqui |
-|-----------------|-------------------------|
-| **CTO** | Demonstra raciocinio sobre custo (Free Tier), seguranca (IMDSv2, OIDC, NetworkPolicy), e disciplina de documentacao (ADR, runbooks, playbooks). |
-| **Gerente / Coordenador** | Mostra como o autor pensa entregabilidade (`setup.sh` em um comando), risco (rollback documentado em 3 camadas) e onboarding (cada decisao com `Por que essa?`). |
-| **Tech Lead** | Codigo modular Terraform com dependency injection, chart Helm seguindo as convencoes `app.kubernetes.io/*`, GitFlow no pipeline, GitOps com App-of-Apps. |
-| **Recrutador / Hiring Manager** | Prova pratica do que esta no curriculo: AWS multi-conta, OIDC, Kubernetes, Helm, ArgoCD, observabilidade (mencionada nos playbooks). |
-| **Banca de pos-graduacao** | Cobre o ciclo completo IaC -> Cluster -> CI/CD -> GitOps -> Seguranca, com bibliografia em [docs/links-e-referencias.md](docs/links-e-referencias.md). |
-
 ---
 
 ## Estrutura do repositorio
@@ -162,7 +152,7 @@ A pasta [docs/](docs/) e o coracao do projeto. Cada documento foi escrito para s
 
 ## Sobre o autor
 
-**Christopher Amaral** — Engenheiro de infraestrutura (DevOps/SRE/PSE) com 6+ anos em ambientes de alta disponibilidade, com passagens por **Lojas Renner, iFood/Zoop, EDCS e Itau Latam**. Cursando Engenharia da Computacao (Impacta Tecnologia) e tecnico em Analise/Desenvolvimento, Eletrotecnica e Eletronica (ETEC).
+**Christopher Amaral** — Engenheiro de infraestrutura (DevOps/SRE/PSE) com 6+ anos em ambientes de alta disponibilidade. Passou por uma grande operacao de varejo brasileiro, fintech de meios de pagamento em marketplace de delivery, integradora/consultoria de TI e banco de varejo com grande escalabilidade na America Latina. Atuou em iniciativas de orquestracao com **Apache Airflow** (DAGs operacionais para ETL/automacao recorrente) e em projetos de **IA aplicada a operacao** (deteccao de anomalia em log, classificacao de incidente, ChatOps). Cursando Engenharia da Computacao e tecnico em Analise/Desenvolvimento, Eletrotecnica e Eletronica.
 
 LinkedIn: [christopher-amaral](https://www.linkedin.com/in/christopher-amaral-6788b0359)
 

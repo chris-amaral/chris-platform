@@ -132,9 +132,11 @@ stateDiagram-v2
 
 | Bloco do diagrama | Item do CV reproduzido |
 |-------------------|------------------------|
-| OIDC + IAM Roles | Itau Latam — provisionamento AWS com OIDC |
-| ArgoCD + App-of-Apps | iFood/Zoop — auditoria de deploy via Git |
-| Self-Healing CronJob | iFood/Zoop — sistema de Self-Healing reduzindo MTTR |
-| kube-prometheus-stack + Loki | Datadog/Grafana/Prometheus/Loki/Graylog (varios) |
-| Cost Report (Python) | Itau Latam — automacoes em Python no GitHub Actions |
-| DR Playbook | EDCS — jobs de backup/restore SQL Server |
+| OIDC + IAM Roles | Banco de varejo na America Latina — provisionamento AWS com OIDC |
+| ArgoCD + App-of-Apps | Fintech de meios de pagamento — auditoria de deploy via Git |
+| Self-Healing CronJob | Fintech de meios de pagamento — sistema de Self-Healing reduzindo MTTR |
+| kube-prometheus-stack + Loki | Datadog/Grafana/Prometheus/Loki/Graylog (varios contextos) |
+| Cost Report (Python) | Banco de varejo na America Latina — automacoes em Python no GitHub Actions |
+| DR Playbook | Integradora/consultoria de TI — jobs de backup/restore SQL Server |
+| Airflow (roadmap) | Banco de varejo na America Latina — DAGs operacionais para ETL e automacao recorrente |
+| IA em pipeline (roadmap) | Equipes de plataforma — classificacao de incidente, deteccao de anomalia em log, ChatOps |

@@ -81,7 +81,8 @@ networkPolicy:
 # --- Self-Healing -----------------------------------------------------------
 # CronJob que detecta pods em CrashLoopBackOff (ou com restartCount alto)
 # e os deleta para forcar recriacao pelo controller. Reproduz, em escala
-# de laboratorio, o sistema de Self-Healing que rodava no iFood/Zoop.
+# de laboratorio, o sistema de Self-Healing que rodava em uma fintech de
+# meios de pagamento em que atuei.
 #
 # Em producao, troque por um operator dedicado (kured, descheduler ou um
 # custom com kopf/operator-sdk). Aqui o CronJob basta para demonstrar.
