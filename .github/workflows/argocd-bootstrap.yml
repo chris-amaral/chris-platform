@@ -59,16 +59,39 @@ jobs:
           scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -r \
             argocd ubuntu@${{ secrets.EC2_SSH_HOST }}:/tmp/argocd
 
-      - name: Aplicar AppProject + Applications
+      - name: Instalar ArgoCD se ausente + aplicar manifestos
+        # Idempotente: se ArgoCD ja existe, o install.sh e no-op nos passos
+        # que aplicam manifests (kubectl apply --dry-run + apply); se nao
+        # existe, instala do zero. Resolve o caso da EC2 ter sido provisionada
+        # ANTES do bootstrap-cluster.sh ter o passo de ArgoCD.
         run: |
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
             ubuntu@${{ secrets.EC2_SSH_HOST }} << 'EOF'
           set -e
-          kubectl -n argocd wait --for=condition=available deployment --all --timeout=5m
-          kubectl apply -f /tmp/argocd/projects/chris-platform.yaml
-          kubectl apply -f /tmp/argocd/applications/webapp.yaml
+          export PATH="$PATH:/usr/local/bin"
+
+          # 1) Garantir que ArgoCD esta instalado
+          if ! kubectl get namespace argocd >/dev/null 2>&1 \
+              || [ "$(kubectl -n argocd get deploy 2>/dev/null | wc -l)" -lt 2 ]; then
+            echo "ArgoCD ausente na EC2. Rodando /tmp/argocd/install.sh..."
+            chmod +x /tmp/argocd/install.sh
+            bash /tmp/argocd/install.sh
+          else
+            echo "ArgoCD ja presente. Aplicando apenas os manifestos."
+            kubectl -n argocd wait --for=condition=available deployment --all --timeout=5m
+            kubectl apply -f /tmp/argocd/projects/chris-platform.yaml
+            kubectl apply -f /tmp/argocd/applications/webapp.yaml
+          fi
+
           echo ""
           echo "=== ArgoCD Applications ==="
-          kubectl -n argocd get applications.argoproj.io -o wide
+          kubectl -n argocd get applications.argoproj.io -o wide || true
+
+          echo ""
+          echo "=== Senha admin inicial (so existe na primeira instalacao) ==="
+          kubectl -n argocd get secret argocd-initial-admin-secret \
+            -o jsonpath='{.data.password}' 2>/dev/null \
+            | base64 -d || echo "(secret ja foi rotacionado ou sem permissao)"
+
           rm -rf /tmp/argocd
           EOF
