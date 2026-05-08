@@ -150,6 +150,6 @@ A pasta [docs/](docs/) e o coracao do projeto. Cada documento foi escrito para s
 
 ## Sobre o autor
 
-**Christopher Amaral** — Engenheiro de infraestrutura (DevOps/SRE/PSE) com 6+ anos em ambientes de alta disponibilidade. Passou por uma grande operacao de varejo brasileiro, fintech de meios de pagamento em marketplace de delivery, integradora/consultoria de TI e banco de varejo com grande escalabilidade na America Latina. Atuou em iniciativas de orquestracao com **Apache Airflow** (DAGs operacionais para ETL/automacao recorrente) e em projetos de **IA aplicada a operacao** (deteccao de anomalia em log, classificacao de incidente, ChatOps). Cursando Engenharia da Computacao e tecnico em Analise/Desenvolvimento, Eletrotecnica e Eletronica.
+**Christopher Amaral** — Engenheiro de infraestrutura (DevOps/SRE/PSE) com 6+ anos em ambientes de alta disponibilidade. Passou por uma grande operacao de varejo brasileiro, fintech de meios de pagamento em marketplace de delivery, integradora/consultoria de TI e banco de varejo com grande escalabilidade na America Latina. Atuou em iniciativas de orquestracao com **Apache Airflow** (DAGs operacionais para ETL/automacao recorrente) e em projetos de **IA aplicada a operacao** (deteccao de anomalia em log, classificacao de incidente, ChatOps). Formado em Engenharia da Computacao e tecnico em Analise/Desenvolvimento, Eletrotecnica e Eletronica.
 
 LinkedIn: [christopher-amaral](https://www.linkedin.com/in/christopher-amaral-6788b0359)
