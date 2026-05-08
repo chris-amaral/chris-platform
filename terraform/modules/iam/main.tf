@@ -107,6 +107,20 @@ resource "aws_iam_role_policy" "github_actions" {
           "ssm:StartSession"
         ]
         Resource = "*"
+      },
+      {
+        # Necessario para o workflow cost-report.yml ler dados do AWS Cost Explorer
+        # via boto3 (scripts/aws_cost_report.py). Cost Explorer nao aceita
+        # resource-level permission, entao "*" e o padrao correto.
+        Sid    = "CostExplorerRead"
+        Effect = "Allow"
+        Action = [
+          "ce:GetCostAndUsage",
+          "ce:GetTags",
+          "ce:GetDimensionValues",
+          "ce:GetCostForecast"
+        ]
+        Resource = "*"
       }
     ]
   })
