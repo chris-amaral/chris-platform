@@ -43,7 +43,7 @@ Provisiona uma EC2 na AWS, sobe um cluster Kubernetes (Kind), instala ArgoCD e e
 | CI/CD pull | **ArgoCD (App-of-Apps)** | GitOps real: cluster reconcilia o estado a partir do Git, com `prune` e `selfHeal` ligados. |
 | Observabilidade | **Prometheus + Grafana + Loki** | Stack completa via ArgoCD App. Metricas, alertas, dashboards e logs centralizados — desligavel para Kind pequeno. |
 | Self-Healing | **CronJob no chart** | Detecta CrashLoopBackOff e deleta o pod para o ReplicaSet recriar. Espelha um sistema de auto-cura que entreguei numa fintech de meios de pagamento. |
-| Automacao | **Python + boto3** | `aws_cost_report.py` agendado via Actions: relatorio diario de custo agrupado por tag e servico. |
+| Automacao | **Python + boto3** | `aws_cost_report.py` (Cost Explorer -> JSON, agrupado por tag/servico). Workflow ficou em modo **manual/demo** apos a etapa de estudo — schedule desativado intencionalmente para nao gerar custo recorrente. Pra rodar: `gh workflow run "AWS - Daily Cost Report"`. |
 | Orquestracao (roadmap) | **Apache Airflow** | DAG planejada para encadear o cost report + scan de drift Terraform + checagem de saude do cluster + envio para Slack. Espelha automacoes que entreguei em banco de varejo. |
 | IA aplicada (roadmap) | **LLM em pipeline** | Iniciativas planejadas: classificador de severidade de log via LLM, ChatOps para `kubectl describe` em linguagem natural, sumarizacao automatica de PR/incidente. Tema que ja toquei em equipes anteriores. |
 | Seguranca | IMDSv2, EBS encrypted, S3 bloqueado, SG least-privilege, OIDC trust por branch, **Trivy** em CVE de imagem e IaC, **gitleaks** em pre-commit | Cada controle existe para responder a um incidente real que vivi ou estudei (ver [docs/security-baseline.md](docs/security-baseline.md)). |
@@ -124,7 +124,7 @@ A pasta [docs/](docs/) e o coracao do projeto. Cada documento foi escrito para s
 ├── .github/workflows/
 │   ├── ci-deploy-k8s.yml             # Pipeline CI/CD (lint + Trivy + deploy)
 │   ├── argocd-bootstrap.yml          # Aplica os manifestos ArgoCD (manual)
-│   └── cost-report.yml               # Relatorio diario de custo AWS via OIDC
+│   └── cost-report.yml               # Relatorio de custo AWS via OIDC (demo, manual)
 ├── argocd/
 │   ├── projects/chris-platform.yaml      # AppProject que isola as apps deste lab
 │   ├── applications/

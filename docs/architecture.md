@@ -136,7 +136,7 @@ stateDiagram-v2
 | ArgoCD + App-of-Apps | Fintech de meios de pagamento — auditoria de deploy via Git |
 | Self-Healing CronJob | Fintech de meios de pagamento — sistema de Self-Healing reduzindo MTTR |
 | kube-prometheus-stack + Loki | Datadog/Grafana/Prometheus/Loki/Graylog (varios contextos) |
-| Cost Report (Python) | Banco de varejo na America Latina — automacoes em Python no GitHub Actions |
+| Cost Report (Python, demo manual) | Banco de varejo na America Latina — automacoes em Python no GitHub Actions. Schedule do workflow ficou desativado neste lab para nao gerar custo recorrente; execucao via `workflow_dispatch` |
 | DR Playbook | Integradora/consultoria de TI — jobs de backup/restore SQL Server |
 | Airflow (roadmap) | Banco de varejo na America Latina — DAGs operacionais para ETL e automacao recorrente |
 | IA em pipeline (roadmap) | Equipes de plataforma — classificacao de incidente, deteccao de anomalia em log, ChatOps |

@@ -6,6 +6,15 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
 ---
 
+## [1.4.2] - 2026-04-30
+
+### Alterado
+
+- `cost-report.yml`: schedule diario (`cron: 0 9 * * *`) **desativado intencionalmente**. O workflow agora roda apenas via `workflow_dispatch` (manual) — mantido como demonstracao da automacao Python via OIDC, sem gerar custo de runner recorrente
+- README e `docs/architecture.md` atualizados para refletir que o cost-report e modo demo/manual
+
+---
+
 ## [1.4.1] - 2026-04-30
 
 ### Alterado

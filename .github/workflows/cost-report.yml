@@ -1,23 +1,27 @@
 ###############################################################################
 # cost-report.yml
 #
-# Roda diariamente as 09:00 UTC (06:00 BRT) e em demanda. Coleta o custo
-# AWS dos ultimos N dias usando Cost Explorer, agrupa por servico e por
-# tag Project e publica o JSON como artifact da execucao.
+# DEMO / MANUAL APENAS — schedule diario foi desativado intencionalmente.
 #
-# Reproduz, em escala de laboratorio, o tipo de automacao operacional em
-# Python que rodava nas pipelines da equipe em que atuei (banco de varejo
-# com grande escalabilidade na America Latina):
-# scripts curtos, agendados, autenticados via OIDC, com saida estruturada
-# que outros sistemas conseguem consumir.
+# Este workflow existe como demonstracao de como reproduzir, em escala de
+# laboratorio, o tipo de automacao operacional em Python que rodava nas
+# pipelines da equipe em que atuei (banco de varejo com grande escalabilidade
+# na America Latina): scripts curtos, autenticados via OIDC, com saida
+# estruturada que outros sistemas conseguem consumir.
+#
+# Como executar manualmente:
+#   gh workflow run "AWS - Daily Cost Report" -f days=7
+# Ou via UI: Actions -> "AWS - Daily Cost Report" -> "Run workflow".
+#
+# Para reativar o schedule diario, descomentar o bloco `schedule:` abaixo.
 #
 # Mantenedor: chris-amaral
 ###############################################################################
 name: AWS - Daily Cost Report
 
 on:
-  schedule:
-    - cron: "0 9 * * *"
+  # schedule:
+  #   - cron: "0 9 * * *"   # 09:00 UTC = 06:00 BRT — desativado intencionalmente
   workflow_dispatch:
     inputs:
       days:
