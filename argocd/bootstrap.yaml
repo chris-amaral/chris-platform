@@ -20,7 +20,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/chris-amaral/DevOps-CICD.git
+    repoURL: https://github.com/chris-amaral/chris-platform.git
     targetRevision: main
     path: argocd
     directory:

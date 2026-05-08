@@ -14,7 +14,7 @@ flowchart LR
   end
 
   subgraph GH["GitHub"]
-    REPO[(chris-amaral/DevOps-CICD)]
+    REPO[(chris-amaral/chris-platform)]
     ACT["GitHub Actions<br/>ci-deploy-k8s.yml<br/>argocd-bootstrap.yml<br/>cost-report.yml"]
   end
 

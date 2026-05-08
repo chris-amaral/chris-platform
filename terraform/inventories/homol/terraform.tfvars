@@ -9,4 +9,4 @@ instance_type          = "t3.medium"
 key_name               = ""
 allowed_ssh_cidrs      = []
 enable_nodeport_access = false
-github_repository      = "chris-amaral/DevOps-CICD"
+github_repository      = "chris-amaral/chris-platform"

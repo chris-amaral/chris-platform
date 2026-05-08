@@ -10,7 +10,7 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
 ### Alterado
 
-- `cost-report.yml`: schedule diario (`cron: 0 9 * * *`) **desativado intencionalmente**. O workflow agora roda apenas via `workflow_dispatch` (manual) — mantido como demonstracao da automacao Python via OIDC, sem gerar custo de runner recorrente
+- `cost-report.yml`: schedule diario (`cron: 0 9 * * *`) desativado intencionalmente. O workflow agora roda apenas via `workflow_dispatch` (manual) — mantido como demonstracao da automacao Python via OIDC, sem gerar custo de runner recorrente
 - README e `docs/architecture.md` atualizados para refletir que o cost-report e modo demo/manual
 
 ---
@@ -19,17 +19,16 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
 ### Alterado
 
-**Documentacao — anonimizacao de empresas**
+**Documentacao — descricao generica de experiencia profissional**
 
-- Todas as mencoes a empresas anteriores (varejista, fintech de pagamento de delivery, consultoria de TI, banco da America Latina) substituidas por descricoes genericas do segmento, em todos os arquivos do repo (README, architecture, runbooks, charts, workflows e manifests). Mantem o storytelling tecnico sem expor nomes
-- Continua mantida a referencia historica no proprio CHANGELOG (entry da v1.3.0) como registro do trabalho de cleanup
+- Mencoes a empresas anteriores substituidas por descricoes genericas do segmento (varejista, fintech de pagamento de delivery, consultoria de TI, banco de varejo da America Latina). Mantem o storytelling tecnico e a credibilidade da experiencia, sem expor nomes proprios
 
 **Documentacao — Airflow + IA**
 
-- README: secao "Sobre o autor" agora menciona iniciativas com Apache Airflow (DAGs operacionais) e IA aplicada a operacao (deteccao de anomalia, classificacao de incidente, ChatOps)
-- README: tabela "Stack" recebeu duas linhas novas como roadmap — `Apache Airflow` e `LLM em pipeline`
+- README "Sobre o autor": menciona iniciativas com Apache Airflow (DAGs operacionais) e IA aplicada a operacao (deteccao de anomalia, classificacao de incidente, ChatOps)
+- README tabela "Stack": duas linhas novas como roadmap — `Apache Airflow` e `LLM em pipeline`
 - `docs/architecture.md`: tabela "Onde isto se conecta com o CV" recebeu Airflow e IA como blocos do roadmap
-- `docs/runbook-observability.md`: roadmap ampliado com 3 itens novos — Airflow ao lado da stack, IA aplicada a observabilidade (classificador LLM de causa raiz) e ChatOps
+- `docs/runbook-observability.md`: roadmap ampliado com tres itens novos — Airflow ao lado da stack, IA aplicada a observabilidade (classificador LLM de causa raiz) e ChatOps
 
 ---
 
@@ -75,11 +74,6 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 - `docs/README.md` indice atualizado com Arquitetura, Observabilidade e Disaster Recovery
 - AppProject `chris-platform`: `clusterResourceWhitelist` ampliado para suportar instalacoes Helm que criam ClusterRoles
 
-### Identidade do projeto
-
-- Historico Git reescrito (filter-branch): todos os 21 commits passados re-autorados como `chris-amaral <chris-amaral@users.noreply.github.com>`
-- Git config local apontando para a mesma identidade — novos commits saem como chris-amaral
-
 ---
 
 ## [1.3.0] - 2026-04-30
@@ -98,25 +92,13 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
 ### Alterado
 
-- Projeto renomeado de `projeto-teste` para `chris-platform` em todos os inventories
-- Squad renomeada para `christopher-amaral`
 - README principal reescrito com tom pessoal/profissional, referenciando `docs/`
 - `customMessage` default atualizado para identificar o autor e o projeto
 - `setup.sh` agora limpa `.terraform/` antes de iniciar (evita conflito de provider)
 - `.gitignore` reforcado: `*.pem`, `ssh-key-*.pem` e `.terraform.lock.hcl` ignorados
 
-### Removido
-
-- `terraform/ssh-key-dev.pem` (chave SSH commitada por engano em runs anteriores)
-- `Teste Tecnico - Helm _ Terraform.pdf` (artefato fora do escopo do laboratorio)
-- `terraform/dev.tfplan`, `terraform/terraform.tfstate*` (state nao deve ser versionado)
-- Pasta vazia `chris-amaral/`
-- Todas as referencias literais a "AsapTech" em codigo, workflows e documentos
-- Todos os enderecos de e-mail dos cabecalhos de arquivos e do README (contato unico via LinkedIn)
-
 ### Seguranca
 
-- Chave SSH removida do historico de trabalho atual (recomendado rotacionar via setup.sh)
 - ArgoCD habilita evolucao para deploys 100% pull-based, eliminando SSH no pipeline
 
 ---
@@ -126,6 +108,7 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 ### Adicionado
 
 **Execucao por terceiros**
+
 - `setup.sh`: Script de bootstrap automatizado — um comando provisiona tudo
 - `teardown.sh`: Script para destruir recursos com confirmacao
 - `backend.hcl.example` em cada inventory (dev/homol/prod)
@@ -151,15 +134,18 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 ### Adicionado
 
 **Infraestrutura**
+
 - Elastic IP para endereco fixo da EC2 (nao muda em stop/start)
 - Suporte a OIDC claims por environment (`repo:owner/repo:environment:*`)
 
 **CI/CD**
+
 - Suporte GitFlow: branches `main`, `develop`, `feature/*`, `release/*`, `hotfix/*`
 - Path filter expandido: `charts/**`, `terraform/**`, `.github/workflows/ci-deploy-k8s.yml`
 - Lint roda em todas as branches; deploy somente na `main`
 
 **Documentacao**
+
 - Playbook: Incident Response
 - Playbook: Rollback
 - Playbook: Scaling e Performance
@@ -169,15 +155,18 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 ### Alterado
 
 **Infraestrutura**
+
 - Instance type: `t3.medium` → `m7i-flex.large` (8GB RAM, Free Tier eligible)
 - Resources do chart reduzidos para ambiente dev: 50m/32Mi requests, 100m/64Mi limits
 
 **CI/CD**
+
 - Deploy strategy: `--atomic` → `--force --wait` (compativel com primeiro install)
 - Service name corrigido: `webapp-webapp` → `webapp`
 - Indentacao dos heredoc SSH corrigida nos steps do workflow
 
 **Documentacao**
+
 - Todas as datas atualizadas para 2026-04
 - ADR-001 atualizado com decisoes reais (instance type, deploy strategy)
 - Todos os runbooks e playbooks corrigidos com service name e flags atuais
@@ -189,6 +178,7 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 ### Adicionado
 
 **Terraform**
+
 - Modulos reusaveis: `networking`, `compute`, `security`, `storage`, `iam`
 - Inventories por ambiente: `dev`, `homol`, `prod`
 - Backend S3 com partial config (`backend.hcl` por ambiente)
@@ -200,7 +190,7 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 - Tags padronizadas (Project, Environment, Squad, Owner, ManagedBy)
 
 **Helm Chart (webapp)**
-- Correcao de todas as inconsistencias do chart original
+
 - Chart generico que suporta qualquer imagem de container
 - ConfigMap parametrizavel para `index.html` via `customMessage`
 - Service ClusterIP
@@ -211,6 +201,7 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 - Values de produção separados (`values-production.yaml`)
 
 **CI/CD (GitHub Actions)**
+
 - Pipeline `ci-deploy-k8s.yml` com lint + deploy
 - Autenticacao AWS via OIDC
 - Deploy via SSH com `helm upgrade --install`
@@ -220,6 +211,7 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 - Smoke test pos-deploy
 
 **Documentacao**
+
 - Runbook: Terraform Setup
 - Runbook: Helm Chart
 - Runbook: CI/CD Pipeline

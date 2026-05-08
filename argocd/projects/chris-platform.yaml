@@ -15,8 +15,8 @@ metadata:
 spec:
   description: Aplicacoes da plataforma pessoal de Christopher Amaral
   sourceRepos:
-    - https://github.com/chris-amaral/DevOps-CICD.git
-    - https://github.com/chris-amaral/DevOps-CICD
+    - https://github.com/chris-amaral/chris-platform.git
+    - https://github.com/chris-amaral/chris-platform
     - https://prometheus-community.github.io/helm-charts
     - https://grafana.github.io/helm-charts
   destinations:

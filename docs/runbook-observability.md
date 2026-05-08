@@ -103,7 +103,7 @@ spec:
             severity: warning
           annotations:
             summary: "Pod webapp nao pronto ha 2 minutos"
-            runbook: "https://github.com/chris-amaral/DevOps-CICD/blob/main/docs/playbook-incident-response.md"
+            runbook: "https://github.com/chris-amaral/chris-platform/blob/main/docs/playbook-incident-response.md"
 ```
 
 > **Ponto importante**: Toda regra de alerta deve apontar para um runbook. Vi muitas equipes onde o alerta diz "PodNotReady" e ninguem sabe o que fazer. O `runbook` annotation e o que fecha o ciclo entre observabilidade e operacao.

@@ -35,7 +35,7 @@ GitOps, na pratica, resolve isso. Cada deploy vira um commit, cada commit tem do
 ## Arquitetura GitOps deste projeto
 
 ```text
-              GitHub (chris-amaral/DevOps-CICD)
+              GitHub (chris-amaral/chris-platform)
                        |
                        | repoURL + targetRevision: main
                        v
@@ -80,8 +80,8 @@ ssh -i ssh-key-dev.pem ubuntu@<EC2_IP> 'cat /var/log/bootstrap-status'
 
 # 3. Aplicar a Application webapp (uma vez)
 ssh -i ssh-key-dev.pem ubuntu@<EC2_IP> '
-  kubectl apply -f https://raw.githubusercontent.com/chris-amaral/DevOps-CICD/main/argocd/projects/chris-platform.yaml
-  kubectl apply -f https://raw.githubusercontent.com/chris-amaral/DevOps-CICD/main/argocd/applications/webapp.yaml
+  kubectl apply -f https://raw.githubusercontent.com/chris-amaral/chris-platform/main/argocd/projects/chris-platform.yaml
+  kubectl apply -f https://raw.githubusercontent.com/chris-amaral/chris-platform/main/argocd/applications/webapp.yaml
 '
 ```
 
@@ -93,8 +93,8 @@ Se o user-data falhou por algum motivo (rede instavel no provisionamento, regist
 
 ```bash
 # Na EC2
-git clone https://github.com/chris-amaral/DevOps-CICD.git
-cd DevOps-CICD
+git clone https://github.com/chris-amaral/chris-platform.git
+cd chris-platform
 chmod +x argocd/install.sh
 ./argocd/install.sh
 ```

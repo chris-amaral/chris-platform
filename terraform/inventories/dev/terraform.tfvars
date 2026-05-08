@@ -9,4 +9,4 @@ instance_type          = "m7i-flex.large"
 key_name               = ""
 allowed_ssh_cidrs      = ["0.0.0.0/0"]
 enable_nodeport_access = true
-github_repository      = "chris-amaral/DevOps-CICD"
+github_repository      = "chris-amaral/chris-platform"

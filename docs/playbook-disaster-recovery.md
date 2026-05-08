@@ -89,7 +89,7 @@ docker start kind-control-plane
 # 3b. Container nao existe mais — recriar do zero
 sudo bash -c '
   rm -f /var/log/bootstrap-status
-  curl -sL https://raw.githubusercontent.com/chris-amaral/DevOps-CICD/main/terraform/modules/compute/scripts/bootstrap-cluster.sh -o /tmp/bootstrap.sh
+  curl -sL https://raw.githubusercontent.com/chris-amaral/chris-platform/main/terraform/modules/compute/scripts/bootstrap-cluster.sh -o /tmp/bootstrap.sh
   bash /tmp/bootstrap.sh
 '
 
@@ -176,8 +176,8 @@ aws configure --profile dr
 aws sts get-caller-identity --profile dr
 
 # 2. Restaurar o backend (state e os tfvars estao no Git, entao sao recuperaveis)
-git clone https://github.com/chris-amaral/DevOps-CICD.git
-cd DevOps-CICD/terraform
+git clone https://github.com/chris-amaral/chris-platform.git
+cd chris-platform/terraform
 
 # 3. Editar inventory para nova conta (se mudou owner/squad/regiao)
 vi inventories/dev/terraform.tfvars
