@@ -45,6 +45,7 @@
 |-----------|---------------|
 | [ADR-001 Decisoes tecnicas](adr-001-decisoes-tecnicas.md) | Por que Kind, OIDC, m7i-flex.large, partial backend, etc. |
 | [Security baseline](security-baseline.md) | Checklist de controles por camada (AWS, K8s, CI/CD, repo) |
+| [Cost Explorer automation](cost-explorer-automation.md) | Padrao de relatorio de custo via Python+OIDC com observacoes de campo |
 | [Guia passo a passo](GUIA-PASSO-A-PASSO.md) | Validacao end-to-end, da clonagem ao curl no pod |
 | [Links e referencias](links-e-referencias.md) | Documentacao oficial curada por tecnologia |
 

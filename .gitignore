@@ -55,3 +55,4 @@ charts/*/charts/
 aws/
 
 __pycache__/
+chris-platform/
